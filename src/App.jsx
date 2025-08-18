@@ -1,0 +1,71 @@
+import { useEffect, useState } from "react";
+
+function App() {
+  const [audioCtx, setAudioCtx] = useState(null);
+  const [currentSource, setCurrentSource] = useState(null);
+  const [status, setStatus] = useState("Idle");
+
+  const tracks = [
+    { name: "Exploration", file: "exploration.ogg" }, // OGG recommended
+    { name: "Battle", file: "battle.ogg" },
+    { name: "Tense Moment", file: "tense.ogg" },
+  ];
+
+  useEffect(() => {
+    // create AudioContext only once
+    if (!audioCtx) {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      setAudioCtx(ctx);
+    }
+  }, [audioCtx]);
+
+  const playTrack = async (track) => {
+    if (!audioCtx) return;
+
+    // stop any currently playing audio
+    if (currentSource) {
+      currentSource.stop();
+    }
+
+    setStatus(`Loading ${track.name}...`);
+
+    // fetch and decode audio into buffer
+    const response = await fetch(`/soundtracks/${track.file}`);
+    const arrayBuffer = await response.arrayBuffer();
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+    // create a source that loops seamlessly
+    const source = audioCtx.createBufferSource();
+    source.buffer = audioBuffer;
+    source.loop = true;
+    source.connect(audioCtx.destination);
+    source.start(0);
+
+    setCurrentSource(source);
+    setStatus(`Playing: ${track.name}`);
+  };
+
+  return (
+    <div style={{ fontFamily: "sans-serif", padding: "20px" }}>
+      <h1>Dynamic Music Player</h1>
+      <p>Status: {status}</p>
+      <div style={{ marginTop: "20px" }}>
+        {tracks.map((track) => (
+          <button
+            key={track.name}
+            onClick={() => playTrack(track)}
+            style={{
+              margin: "5px",
+              padding: "10px 20px",
+              cursor: "pointer",
+            }}
+          >
+            {track.name}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default App;
