@@ -1,4 +1,3 @@
-// extract-durations.mjs
 import fs from "fs";
 import path from "path";
 import { parseFile } from "music-metadata";
@@ -17,6 +16,8 @@ async function extractDurations() {
     if (ext !== ".wav") continue;
 
     const filePath = path.join(inputDir, file);
+    console.log(`Processing file: ${filePath}`);
+
     const metadata = await parseFile(filePath);
 
     // Default loop points (if not found in metadata)
@@ -40,6 +41,8 @@ async function extractDurations() {
       loopEnd: parseFloat(loopEnd.toFixed(3)),
       next: [] // GM can edit later
     };
+
+    console.log(` → Clip added: ${clipName}.ogg (loopStart: ${loopStart.toFixed(3)}, loopEnd: ${loopEnd.toFixed(3)})`);
   }
 
   fs.writeFileSync(outputFile, JSON.stringify({ clips }, null, 2));
