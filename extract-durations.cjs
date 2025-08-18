@@ -2,40 +2,55 @@ const { execSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 
-// Directory containing your audio files
-const audioDir = path.join(__dirname, "public/soundtracks");
-
-// Output file
-const outputFile = path.join(__dirname, "loopData.json");
-
-// Supported formats
-const supported = [".wav", ".ogg", ".mp3"];
+const folder = __dirname; // current folder
+const outputFile = path.join(folder, "loopData.json");
 
 const result = {};
 
-fs.readdirSync(audioDir).forEach(file => {
+fs.readdirSync(folder).forEach((file) => {
   const ext = path.extname(file).toLowerCase();
-  if (!supported.includes(ext)) return;
 
-  const filePath = path.join(audioDir, file);
+  // Only process .wav files
+  if (ext === ".wav") {
+    try {
+      // Run ffprobe to extract loop metadata
+      const metadata = execSync(
+        `ffprobe -v error -show_entries stream_tags=LOOPSTART,LOOPEND -of default=noprint_wrappers=1:nokey=0 "${file}"`,
+        { encoding: "utf8" }
+      );
 
-  try {
-    // Run ffprobe to get duration in seconds
-    const duration = execSync(
-      `ffprobe -i "${filePath}" -show_entries format=duration -v quiet -of csv="p=0"`
-    )
-      .toString()
-      .trim();
+      let loopStart = 0;
+      let loopEnd = null;
 
-    result[file] = {
-      loopStart: 0.0,
-      loopEnd: parseFloat(duration)
-    };
-  } catch (err) {
-    console.error(`Failed to probe ${file}:`, err.message);
+      metadata.split("\n").forEach((line) => {
+        if (line.startsWith("TAG:LOOPSTART=")) {
+          loopStart = parseInt(line.split("=")[1]);
+        }
+        if (line.startsWith("TAG:LOOPEND=")) {
+          loopEnd = parseInt(line.split("=")[1]);
+        }
+      });
+
+      // Convert samples → seconds (assume 44100 Hz)
+      const sampleRate = 44100;
+      loopStart = loopStart / sampleRate;
+      if (loopEnd) loopEnd = loopEnd / sampleRate;
+
+      // Store in JSON, but replace .wav → .ogg
+      const oggName = file.replace(/\.wav$/i, ".ogg");
+
+      result[oggName] = {
+        loopStart,
+        loopEnd,
+      };
+
+      console.log(`Processed ${file} → ${oggName}`);
+    } catch (err) {
+      console.error(`Failed to process ${file}:`, err.message);
+    }
   }
 });
 
-// Write to JSON
+// Write JSON file
 fs.writeFileSync(outputFile, JSON.stringify(result, null, 2));
-console.log("Loop data written to", outputFile);
+console.log(`Loop data saved to ${outputFile}`);
