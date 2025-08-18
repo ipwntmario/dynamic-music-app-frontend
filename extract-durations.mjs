@@ -39,7 +39,7 @@ async function extractDurations() {
       file: clipName + ".ogg",
       loopStart: parseFloat(loopStart.toFixed(3)),
       loopEnd: parseFloat(loopEnd.toFixed(3)),
-      next: [] // GM can edit later
+      nextClip: [] // GM can edit later
     };
 
     console.log(` → Clip added: ${clipName}.ogg (loopStart: ${loopStart.toFixed(3)}, loopEnd: ${loopEnd.toFixed(3)})`);
