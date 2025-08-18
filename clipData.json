@@ -1,0 +1,22 @@
+{
+  "clips": {
+    "battle": {
+      "file": "battle.ogg",
+      "loopStart": 0,
+      "loopEnd": 144.915,
+      "next": []
+    },
+    "exploration": {
+      "file": "exploration.ogg",
+      "loopStart": 0,
+      "loopEnd": 116.17,
+      "next": []
+    },
+    "tense": {
+      "file": "tense.ogg",
+      "loopStart": 0,
+      "loopEnd": 120,
+      "next": []
+    }
+  }
+}
