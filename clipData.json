@@ -1,22 +1,22 @@
 {
   "clips": {
-    "battle": {
-      "file": "battle.ogg",
-      "loopStart": 0,
-      "loopEnd": 144.915,
-      "next": []
-    },
-    "exploration": {
-      "file": "exploration.ogg",
+    "Follow the Moth": {
+      "file": "Follow the Moth.ogg",
       "loopStart": 0,
       "loopEnd": 116.17,
-      "next": []
+      "nextClip": []
     },
-    "tense": {
-      "file": "tense.ogg",
+    "The Ashwights Attack": {
+      "file": "The Ashwights Attack.ogg",
+      "loopStart": 0,
+      "loopEnd": 144.915,
+      "nextClip": []
+    },
+    "Tommy's Haunted Thoughts (reprise)": {
+      "file": "Tommy's Haunted Thoughts (reprise).ogg",
       "loopStart": 0,
       "loopEnd": 120,
-      "next": []
+      "nextClip": []
     }
   }
 }
