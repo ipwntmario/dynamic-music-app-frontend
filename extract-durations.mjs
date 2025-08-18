@@ -17,10 +17,24 @@ async function extractDurations() {
     const filePath = path.join(inputDir, file);
     console.log(`Processing file: ${filePath}`);
 
-    // 1. Extract loop points
+    // 1. Use ffprobe to get exact duration
+    let exactDuration = 0.0;
+    try {
+      const durationStr = execSync(
+        `ffprobe -i "${filePath}" -show_entries format=duration -v quiet -of csv="p=0"`
+      )
+        .toString()
+        .trim();
+      exactDuration = parseFloat(durationStr);
+    } catch (err) {
+      console.error(`Failed to probe ${file}:`, err.message);
+      continue;
+    }
+
+    // 2. Extract loop points from smpl chunk if available
     const metadata = await parseFile(filePath);
     let loopStart = 0.0;
-    let loopEnd = metadata.format.duration ?? 0.0;
+    let loopEnd = exactDuration; // default to exact duration from ffprobe
 
     if (metadata.native["RIFF"]) {
       const smpl = metadata.native["RIFF"].find(tag => tag.id === "smpl");
@@ -30,13 +44,13 @@ async function extractDurations() {
       }
     }
 
-    // 2. Convert .wav → .ogg using ffmpeg
+    // 3. Convert .wav → .ogg using ffmpeg
     const clipName = path.basename(file, ext);
     const oggPath = path.join(inputDir, `${clipName}.ogg`);
 
     try {
       execSync(
-        `ffmpeg -y -i "${filePath}" -c:a libvorbis -qscale:a 6 -avoid_negative_ts make_zero "${oggPath}"`,
+        `ffmpeg -y -i "${filePath}" -c:a libvorbis -qscale:a 5 -avoid_negative_ts make_zero "${oggPath}"`,
         { stdio: "ignore" }
       );
       console.log(` → Converted to OGG: ${oggPath}`);
@@ -45,18 +59,18 @@ async function extractDurations() {
       continue;
     }
 
-    // 3. Add to clipData
+    // 4. Add to clipData
     clips[clipName] = {
       file: `${clipName}.ogg`,
-      loopStart: parseFloat(loopStart.toFixed(3)),
-      loopEnd: parseFloat(loopEnd.toFixed(3)),
-      nextClip: [] // GM can edit later
+      loopStart: parseFloat(loopStart.toFixed(6)), // more precision
+      loopEnd: parseFloat(loopEnd.toFixed(6)),     // use ffprobe precision
+      nextClip: []
     };
 
     console.log(
       ` → Clip added: ${clipName}.ogg (loopStart: ${loopStart.toFixed(
-        3
-      )}, loopEnd: ${loopEnd.toFixed(3)})`
+        6
+      )}, loopEnd: ${loopEnd.toFixed(6)})`
     );
   }
 
