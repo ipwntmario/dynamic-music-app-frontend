@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 
 const clipDataFile = "./clipData.json";
-const outputFile = "./sectionData.json";
+const outputFile = "./public/sectionData.json";
 
 function generateSections() {
   if (!fs.existsSync(clipDataFile)) {

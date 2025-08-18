@@ -11,9 +11,9 @@ function App() {
   const gainNodeRef = useRef(null);
 
   const tracks = [
-    { name: "Exploration", file: "exploration.ogg" },
-    { name: "Battle", file: "battle.ogg" },
-    { name: "Tense Moment", file: "tense.ogg" },
+    { name: "Follow the Moth", file: "Follow the Moth.ogg" },
+    { name: "The Ashwights Attack", file: "The Ashwights Attack.ogg" },
+    { name: "Tommy's Haunted Thoughts", file: "Tommy's Haunted Thoughts (reprise).ogg" },
   ];
 
   useEffect(() => {
@@ -29,7 +29,7 @@ function App() {
     }
 
     // fetch loopData.json once on startup
-    fetch("/soundtracks/loopData.json")
+    fetch("/audio/loopData.json")
       .then((res) => res.json())
       .then((data) => setLoopData(data))
       .catch((err) => console.error("No loopData.json found:", err));
@@ -44,7 +44,7 @@ function App() {
     setStatus(`Loading ${track.name}...`);
 
     // fetch and decode audio
-    const response = await fetch(`/soundtracks/${track.file}`);
+    const response = await fetch(`/audio/${track.file}`);
     const arrayBuffer = await response.arrayBuffer();
     const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
 
