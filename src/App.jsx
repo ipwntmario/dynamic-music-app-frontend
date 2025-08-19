@@ -2,7 +2,6 @@ import { useEffect, useState, useRef } from "react";
 
 function App() {
   const [audioCtx, setAudioCtx] = useState(null);
-  const [currentSource, setCurrentSource] = useState(null);
   const [status, setStatus] = useState("Idle");
 
   const [clipData, setClipData] = useState({});
@@ -12,7 +11,9 @@ function App() {
 
   const [fadeOutEnabled, setFadeOutEnabled] = useState(true);
 
-  const gainNodeRef = useRef(null);
+  const masterGainRef = useRef(null);
+  const activeClipsRef = useRef({}); // { clipName: { source, gainNode, buffer } }
+  const scheduledEventsRef = useRef([]);
 
   useEffect(() => {
     if (!audioCtx) {
@@ -22,7 +23,7 @@ function App() {
       const gainNode = ctx.createGain();
       gainNode.connect(ctx.destination);
       gainNode.gain.setValueAtTime(1, ctx.currentTime);
-      gainNodeRef.current = gainNode;
+      masterGainRef.current = gainNode;
     }
 
     fetch("clipData.json")
@@ -41,157 +42,150 @@ function App() {
       .catch((err) => console.error("trackData.json not found:", err));
   }, [audioCtx]);
 
-  const playSection = async (sectionName) => {
+  const clearScheduledEvents = () => {
+    scheduledEventsRef.current.forEach((id) => clearTimeout(id));
+    scheduledEventsRef.current = [];
+  };
+
+  const stopTrack = (withFade = true) => {
     if (!audioCtx) return;
 
+    clearScheduledEvents();
+
+    Object.values(activeClipsRef.current).forEach(({ source, gainNode }) => {
+      if (withFade && fadeOutEnabled) {
+        const fadeDuration = 8.0;
+        const now = audioCtx.currentTime;
+        gainNode.gain.cancelScheduledValues(now);
+        gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+        gainNode.gain.linearRampToValueAtTime(0, now + fadeDuration);
+
+        setTimeout(() => {
+          try {
+            source.stop();
+          } catch {}
+        }, fadeDuration * 1000 + 50);
+      } else {
+        try {
+          source.stop();
+        } catch {}
+      }
+    });
+
+    activeClipsRef.current = {};
+    setStatus("Stopped");
+  };
+
+  const preloadTrack = async (trackName) => {
+    stopTrack(false);
+
+    const track = trackData[trackName];
+    if (!track || !track.allClips) return;
+
+    activeClipsRef.current = {};
+
+    for (const clipName of track.allClips) {
+      const clip = clipData[clipName];
+      if (!clip) continue;
+
+      const response = await fetch(`/audio/${clip.file}`);
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+      const source = audioCtx.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+
+      const gainNode = audioCtx.createGain();
+      gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+
+      source.connect(gainNode).connect(masterGainRef.current);
+      source.start(0);
+
+      activeClipsRef.current[clipName] = { source, gainNode, buffer };
+    }
+
+    setStatus(`Track '${trackName}' preloaded`);
+  };
+
+  const playSection = async (sectionName) => {
     const section = sectionData[sectionName];
     if (!section) {
       console.error(`Section '${sectionName}' not found`);
       return;
     }
-
     const firstClipName = section.firstClip;
-    const clip = clipData[firstClipName];
-    if (!clip) {
-      console.error(`Clip '${firstClipName}' not found`);
+    playClip(firstClipName);
+  };
+
+  const playClip = (clipName) => {
+    const clip = clipData[clipName];
+    const entry = activeClipsRef.current[clipName];
+    if (!clip || !entry) {
+      console.error(`Clip '${clipName}' not found or not loaded`);
       return;
     }
 
-    await playClip(firstClipName, clip);
-  };
+    const { buffer } = entry;
+    const now = audioCtx.currentTime;
 
-  const playClip = async (clipName, clip) => {
-    // Stop any existing clip & clear previous timers
-    if (currentSource && currentSource.loopEndEvent) {
-      clearTimeout(currentSource.loopEndEvent);
+    // if there's already a source playing for this clip, stop it
+    if (entry.source) {
+      try {
+        entry.source.stop();
+      } catch {}
     }
-    stopTrack(false);
 
-    setStatus(`Loading ${clipName}...`);
-
-    // Load current clip
-    const response = await fetch(`/audio/${clip.file}`);
-    const arrayBuffer = await response.arrayBuffer();
-    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-
+    // make a new BufferSource each time we "play" a clip
     const source = audioCtx.createBufferSource();
-    source.buffer = audioBuffer;
-    source.connect(gainNodeRef.current);
+    source.buffer = buffer;
+    source.loop = true;
+    source.loopStart = clip.loopStart || 0;
+    source.loopEnd = clip.loopEnd || buffer.duration;
 
-    // Determine if we have a next clip
-    if (clip.nextClip && clip.nextClip.length > 0) {
-      const nextClipName =
-        clip.nextClip.length === 1
-          ? clip.nextClip[0]
-          : clip.nextClip[Math.floor(Math.random() * clip.nextClip.length)];
-      const nextClip = clipData[nextClipName];
+    const gainNode = audioCtx.createGain();
+    gainNode.gain.setValueAtTime(0, now);
 
-      if (nextClip) {
-        // Preload next clip without starting it
-        const nextResp = await fetch(`/audio/${nextClip.file}`);
-        const nextArrayBuffer = await nextResp.arrayBuffer();
-        const nextAudioBuffer = await audioCtx.decodeAudioData(nextArrayBuffer);
+    source.connect(gainNode).connect(masterGainRef.current);
+    source.start(0, clip.loopStart || 0);
 
-        // Schedule next clip at loopEnd
-        const loopDuration = (clip.loopEnd || audioBuffer.duration) - (clip.loopStart || 0);
-        source.loopEndEvent = setTimeout(() => {
-          const nextSource = audioCtx.createBufferSource();
-          nextSource.buffer = nextAudioBuffer;
-          nextSource.connect(gainNodeRef.current);
-          nextSource.start(0);
+    // update ref
+    activeClipsRef.current[clipName] = { source, gainNode, buffer };
 
-          setCurrentSource(nextSource);
-          setStatus(`Playing: ${nextClipName}`);
+    // fade in
+    gainNode.gain.cancelScheduledValues(now);
+    gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+    gainNode.gain.linearRampToValueAtTime(1.0, now + 0.2);
 
-          // Set up subsequent looping or nextClip scheduling
-          scheduleNextClip(nextClipName, nextClip, nextSource, nextAudioBuffer);
-        }, loopDuration * 1000);
-      }
-    } else {
-      // No nextClip, loop current clip normally
-      source.loop = true;
-      source.loopStart = clip.loopStart || 0;
-      source.loopEnd = clip.loopEnd || audioBuffer.duration;
-    }
-
-    source.start(0);
-    setCurrentSource(source);
     setStatus(`Playing: ${clipName}`);
-  };
 
-  // Helper to schedule next clips in the chain
-  const scheduleNextClip = (clipName, clip, sourceNode, audioBuffer) => {
+    // schedule transition
     if (clip.nextClip && clip.nextClip.length > 0) {
-      const nextClipName =
-        clip.nextClip.length === 1
-          ? clip.nextClip[0]
-          : clip.nextClip[Math.floor(Math.random() * clip.nextClip.length)];
-      const nextClip = clipData[nextClipName];
+      const loopEnd = clip.loopEnd ?? buffer.duration;
+      const delay = loopEnd - (clip.loopStart || 0);
 
-      if (nextClip) {
-        fetch(`/audio/${nextClip.file}`)
-          .then((res) => res.arrayBuffer())
-          .then((arrBuf) => audioCtx.decodeAudioData(arrBuf))
-          .then((nextAudioBuffer) => {
-            const loopDuration = (clip.loopEnd || audioBuffer.duration) - (clip.loopStart || 0);
-            sourceNode.loopEndEvent = setTimeout(() => {
-              const nextSource = audioCtx.createBufferSource();
-              nextSource.buffer = nextAudioBuffer;
-              nextSource.connect(gainNodeRef.current);
-              nextSource.start(0);
-              setCurrentSource(nextSource);
-              setStatus(`Playing: ${nextClipName}`);
-              scheduleNextClip(nextClipName, nextClip, nextSource, nextAudioBuffer);
-            }, loopDuration * 1000);
-          });
-      }
+      const timeoutId = setTimeout(() => {
+        // pick next
+        const next =
+          Array.isArray(clip.nextClip) && clip.nextClip.length > 1
+            ? clip.nextClip[
+                Math.floor(Math.random() * clip.nextClip.length)
+              ]
+            : clip.nextClip[0] || clip.nextClip;
+
+        if (clipData[next]) {
+          playClip(next);
+        }
+
+        // fade this one out gracefully
+        gainNode.gain.setValueAtTime(gainNode.gain.value, audioCtx.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
+      }, delay * 1000);
+
+      scheduledEventsRef.current.push(timeoutId);
     }
   };
 
-  const handleClipEnd = (clipName, clip) => {
-    if (clip.nextClip && clip.nextClip.length > 0) {
-      const next =
-        Array.isArray(clip.nextClip) && clip.nextClip.length > 1
-          ? clip.nextClip[Math.floor(Math.random() * clip.nextClip.length)]
-          : clip.nextClip[0] || clip.nextClip;
-
-      const nextClip = clipData[next];
-      if (nextClip) {
-        playClip(next, nextClip);
-        return;
-      }
-    }
-
-    // if no nextClip: stop
-    setStatus("Stopped");
-    setCurrentSource(null);
-  };
-
-  const stopTrack = (withFade = true) => {
-    if (!currentSource || !audioCtx || !gainNodeRef.current) return;
-
-    if (withFade && fadeOutEnabled) {
-      const fadeDuration = 4.0;
-      const now = audioCtx.currentTime;
-      gainNodeRef.current.gain.cancelScheduledValues(now);
-      gainNodeRef.current.gain.setValueAtTime(
-        gainNodeRef.current.gain.value,
-        now
-      );
-      gainNodeRef.current.gain.linearRampToValueAtTime(0, now + fadeDuration);
-
-      currentSource.stop(now + fadeDuration);
-      setTimeout(() => {
-        setCurrentSource(null);
-        setStatus("Stopped");
-        gainNodeRef.current.gain.setValueAtTime(1, audioCtx.currentTime);
-      }, fadeDuration * 1000 + 100);
-    } else {
-      currentSource.stop();
-      setCurrentSource(null);
-      setStatus("Stopped");
-    }
-  };
 
   return (
     <div style={{ fontFamily: "sans-serif", padding: "20px" }}>
@@ -203,7 +197,11 @@ function App() {
           Select Track:{" "}
           <select
             value={selectedTrack || ""}
-            onChange={(e) => setSelectedTrack(e.target.value)}
+            onChange={async (e) => {
+              const newTrack = e.target.value;
+              setSelectedTrack(newTrack);
+              await preloadTrack(newTrack);
+            }}
           >
             <option value="" disabled>
               -- choose a track --
