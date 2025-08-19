@@ -171,7 +171,7 @@ function App() {
       const timeUntilLoopPoint = (clip.loopPoint ?? buffer.duration) - (clip.loopStart || 0);
 
       const timeoutId = setTimeout(() => {
-        // pick next
+        // pick next clip
         const next = Array.isArray(clip.nextClip) && clip.nextClip.length > 1
           ? clip.nextClip[Math.floor(Math.random() * clip.nextClip.length)]
           : clip.nextClip[0];
@@ -180,16 +180,14 @@ function App() {
           playClip(next);
         }
 
-        // fade this clip out at clipEnd
-        const tailDuration = (clip.clipEnd ?? buffer.duration) - (clip.loopPoint ?? buffer.duration);
-        gainNode.gain.setValueAtTime(gainNode.gain.value, audioCtx.currentTime);
-        gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + tailDuration);
+        // immediately set volume to 0 at clipEnd
+        const clipEndTime = clip.clipEnd ?? buffer.duration;
+        gainNode.gain.setValueAtTime(0, audioCtx.currentTime + (clipEndTime - (clip.loopPoint ?? buffer.duration)));
       }, timeUntilLoopPoint * 1000);
 
       scheduledEventsRef.current.push(timeoutId);
     }
   };
-
 
   return (
     <div style={{ fontFamily: "sans-serif", padding: "20px" }}>
