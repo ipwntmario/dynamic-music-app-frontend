@@ -139,9 +139,16 @@ function App() {
     // make a new BufferSource each time we "play" a clip
     const source = audioCtx.createBufferSource();
     source.buffer = buffer;
-    source.loop = true;
+
+    // Determine loop endpoint
+    const loopEndPoint = (!clip.nextClip || clip.nextClip.length === 0)
+      ? clip.loopPoint ?? buffer.duration  // loop to loopPoint if no nextClip
+      : clip.clipEnd ?? buffer.duration;   // play full file if transitioning out
+
+    // Only loop if no nextClip
+    source.loop = !clip.nextClip || clip.nextClip.length === 0;
     source.loopStart = clip.loopStart || 0;
-    source.loopEnd = clip.loopEnd || buffer.duration;
+    source.loopEnd = loopEndPoint;
 
     const gainNode = audioCtx.createGain();
     gainNode.gain.setValueAtTime(0, now);
@@ -159,28 +166,25 @@ function App() {
 
     setStatus(`Playing: ${clipName}`);
 
-    // schedule transition
+    // schedule transition if clip has nextClip
     if (clip.nextClip && clip.nextClip.length > 0) {
-      const loopEnd = clip.loopEnd ?? buffer.duration;
-      const delay = loopEnd - (clip.loopStart || 0);
+      const timeUntilLoopPoint = (clip.loopPoint ?? buffer.duration) - (clip.loopStart || 0);
 
       const timeoutId = setTimeout(() => {
         // pick next
-        const next =
-          Array.isArray(clip.nextClip) && clip.nextClip.length > 1
-            ? clip.nextClip[
-                Math.floor(Math.random() * clip.nextClip.length)
-              ]
-            : clip.nextClip[0] || clip.nextClip;
+        const next = Array.isArray(clip.nextClip) && clip.nextClip.length > 1
+          ? clip.nextClip[Math.floor(Math.random() * clip.nextClip.length)]
+          : clip.nextClip[0];
 
-        if (clipData[next]) {
+        if (clipData[next] && activeClipsRef.current[next]) {
           playClip(next);
         }
 
-        // fade this one out gracefully
+        // fade this clip out at clipEnd
+        const tailDuration = (clip.clipEnd ?? buffer.duration) - (clip.loopPoint ?? buffer.duration);
         gainNode.gain.setValueAtTime(gainNode.gain.value, audioCtx.currentTime);
-        gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
-      }, delay * 1000);
+        gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + tailDuration);
+      }, timeUntilLoopPoint * 1000);
 
       scheduledEventsRef.current.push(timeoutId);
     }
