@@ -2,18 +2,23 @@
   "tracks": {
     "BleepBloop": {
       "defaultDisplayName": "BleepBloop (TEST TRACK)",
-      "firstSection": "BleepBloop_intro",
+      "firstSection": "BleepBloop_main",
       "simple": false
     },
     "Follow the Moth": {
-      "defaultDisplayName": "Village Loop",
-      "firstSection": "main",
+      "defaultDisplayName": "Follow the Moth",
+      "firstSection": "Follow the Moth",
       "simple": true
     },
-    "bossFight": {
-      "defaultDisplayName": "Boss Fight",
-      "firstSection": "start",
-      "simple": false
+    "The Ashwights Attack": {
+      "defaultDisplayName": "The Ashwights Attack",
+      "firstSection": "The Ashwights Attack",
+      "simple": true
+    },
+    "Tommy's Haunted Thoughts (reprise)": {
+      "defaultDisplayName": "Tommy's Haunted Thoughts (reprise)",
+      "firstSection": "Tommy's Haunted Thoughts (reprise)",
+      "simple": true
     }
   }
 }
