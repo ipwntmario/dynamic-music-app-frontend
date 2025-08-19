@@ -1,0 +1,19 @@
+{
+  "tracks": {
+    "BleepBloop": {
+      "defaultDisplayName": "BleepBloop (TEST TRACK)",
+      "firstSection": "BleepBloop_intro",
+      "simple": false
+    },
+    "Follow the Moth": {
+      "defaultDisplayName": "Village Loop",
+      "firstSection": "main",
+      "simple": true
+    },
+    "bossFight": {
+      "defaultDisplayName": "Boss Fight",
+      "firstSection": "start",
+      "simple": false
+    }
+  }
+}

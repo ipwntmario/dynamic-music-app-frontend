@@ -4,79 +4,90 @@ function App() {
   const [audioCtx, setAudioCtx] = useState(null);
   const [currentSource, setCurrentSource] = useState(null);
   const [status, setStatus] = useState("Idle");
-  const [loopData, setLoopData] = useState({});
+
+  const [clipData, setClipData] = useState({});
+  const [sectionData, setSectionData] = useState({});
   const [fadeOutEnabled, setFadeOutEnabled] = useState(true);
 
-  // keep gainNode in a ref so it persists
   const gainNodeRef = useRef(null);
-
-  const tracks = [
-    { name: "Follow the Moth", file: "Follow the Moth.ogg" },
-    { name: "The Ashwights Attack", file: "The Ashwights Attack.ogg" },
-    { name: "Tommy's Haunted Thoughts", file: "Tommy's Haunted Thoughts (reprise).ogg" },
-  ];
 
   useEffect(() => {
     if (!audioCtx) {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       setAudioCtx(ctx);
 
-      // Create a gainNode for volume control
       const gainNode = ctx.createGain();
       gainNode.connect(ctx.destination);
       gainNode.gain.setValueAtTime(1, ctx.currentTime);
       gainNodeRef.current = gainNode;
     }
 
-    // fetch loopData.json once on startup
-    fetch("/audio/loopData.json")
+    // load JSON files
+    fetch("/audio/clipData.json")
       .then((res) => res.json())
-      .then((data) => setLoopData(data))
-      .catch((err) => console.error("No loopData.json found:", err));
+      .then((data) => setClipData(data.clips || {}))
+      .catch((err) => console.error("clipData.json not found:", err));
+
+    fetch("/audio/sectionData.json")
+      .then((res) => res.json())
+      .then((data) => setSectionData(data.sections || {}))
+      .catch((err) => console.error("sectionData.json not found:", err));
   }, [audioCtx]);
 
-  const playTrack = async (track) => {
+  const playSection = async (sectionName) => {
     if (!audioCtx) return;
 
-    // stop any currently playing audio
-    stopTrack(false); // false = don't fade when switching tracks
+    const section = sectionData[sectionName];
+    if (!section) {
+      console.error(`Section '${sectionName}' not found in sectionData.json`);
+      return;
+    }
 
-    setStatus(`Loading ${track.name}...`);
+    const firstClipName = section.firstClip;
+    const clip = clipData[firstClipName];
+    if (!clip) {
+      console.error(`Clip '${firstClipName}' not found in clipData.json`);
+      return;
+    }
 
-    // fetch and decode audio
-    const response = await fetch(`/audio/${track.file}`);
+    await playClip(firstClipName, clip);
+  };
+
+  const playClip = async (clipName, clip) => {
+    stopTrack(false); // stop current playback, no fade for transitions
+
+    setStatus(`Loading ${clipName}...`);
+
+    const response = await fetch(`/audio/${clip.file}`);
     const arrayBuffer = await response.arrayBuffer();
     const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
 
-    // create a source that loops seamlessly
     const source = audioCtx.createBufferSource();
     source.buffer = audioBuffer;
     source.connect(gainNodeRef.current);
 
-    // check if this file has loop points
-    const loopInfo = loopData[track.file];
-    if (loopInfo && loopInfo.loopEnd) {
+    if (clip.loopEnd) {
       source.loop = true;
-      source.loopStart = loopInfo.loopStart || 0;
-      source.loopEnd = loopInfo.loopEnd;
+      source.loopStart = clip.loopStart || 0;
+      source.loopEnd = clip.loopEnd;
       console.log(
-        `Using loop points for ${track.file}: start=${source.loopStart}, end=${source.loopEnd}`
+        `Using loop points for ${clipName}: start=${source.loopStart}, end=${source.loopEnd}`
       );
     } else {
-      source.loop = true; // fallback
-      console.log(`No loop points found for ${track.file}, looping whole track.`);
+      source.loop = true;
+      console.log(`No loop points found for ${clipName}, looping whole track.`);
     }
 
     source.start(0);
     setCurrentSource(source);
-    setStatus(`Playing: ${track.name}`);
+    setStatus(`Playing: ${clipName}`);
   };
 
   const stopTrack = (withFade = true) => {
     if (!currentSource || !audioCtx || !gainNodeRef.current) return;
 
     if (withFade && fadeOutEnabled) {
-      const fadeDuration = 4.0; // seconds (can later be user-configurable)
+      const fadeDuration = 4.0;
       const now = audioCtx.currentTime;
       gainNodeRef.current.gain.cancelScheduledValues(now);
       gainNodeRef.current.gain.setValueAtTime(
@@ -85,12 +96,11 @@ function App() {
       );
       gainNodeRef.current.gain.linearRampToValueAtTime(0, now + fadeDuration);
 
-      // stop source after fade
       currentSource.stop(now + fadeDuration);
       setTimeout(() => {
         setCurrentSource(null);
         setStatus("Stopped");
-        gainNodeRef.current.gain.setValueAtTime(1, audioCtx.currentTime); // reset
+        gainNodeRef.current.gain.setValueAtTime(1, audioCtx.currentTime);
       }, fadeDuration * 1000 + 100);
     } else {
       currentSource.stop();
@@ -105,17 +115,13 @@ function App() {
       <p>Status: {status}</p>
 
       <div style={{ marginTop: "20px" }}>
-        {tracks.map((track) => (
+        {Object.keys(sectionData).map((sectionName) => (
           <button
-            key={track.name}
-            onClick={() => playTrack(track)}
-            style={{
-              margin: "5px",
-              padding: "10px 20px",
-              cursor: "pointer",
-            }}
+            key={sectionName}
+            onClick={() => playSection(sectionName)}
+            style={{ margin: "5px", padding: "10px 20px", cursor: "pointer" }}
           >
-            {track.name}
+            {sectionName}
           </button>
         ))}
 
