@@ -11,6 +11,17 @@
                    "BleepBloop_main_c",
                    "BleepBloop_main_d"]
     },
+    "BleepBloopRANDOM": {
+      "defaultDisplayName": "BleepBloop Randomized (TEST TRACK)",
+      "firstSection": "BleepBloopRANDOM_main",
+      "simple": false,
+      "allClips": ["BleepBloopRANDOM_end",
+                   "BleepBloopRANDOM_intro",
+                   "BleepBloopRANDOM_main_a",
+                   "BleepBloopRANDOM_main_b",
+                   "BleepBloopRANDOM_main_c",
+                   "BleepBloopRANDOM_main_d"]
+    },
     "Follow the Moth": {
       "defaultDisplayName": "Follow the Moth",
       "firstSection": "Follow the Moth",
