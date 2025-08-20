@@ -2,7 +2,7 @@
   "tracks": {
     "BleepBloop": {
       "defaultDisplayName": "BleepBloop (TEST TRACK)",
-      "firstSection": "BleepBloop_main",
+      "firstSection": "BleepBloop_intro",
       "simple": false,
       "allClips": ["BleepBloop_end",
                    "BleepBloop_intro",
@@ -13,7 +13,7 @@
     },
     "BleepBloopRANDOM": {
       "defaultDisplayName": "BleepBloop Randomized (TEST TRACK)",
-      "firstSection": "BleepBloopRANDOM_main",
+      "firstSection": "BleepBloopRANDOM_intro",
       "simple": false,
       "allClips": ["BleepBloopRANDOM_end",
                    "BleepBloopRANDOM_intro",

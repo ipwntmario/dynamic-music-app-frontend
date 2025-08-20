@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AudioEngine } from "./audio/audioEngine";
+import { AudioEngine } from "./audio/AudioEngine";
 import { useMusicData } from "./data/useMusicData";
 import TrackSelector from "./components/TrackSelector";
 import Transport from "./components/Transport";
-import StatusBar from "./components/StatusBar";
 import SectionPanel from "./components/SectionPanel";
+import StatusBar from "./components/StatusBar";
 
 export default function App() {
   const { clips, sections, tracks, loading } = useMusicData();
@@ -12,25 +12,32 @@ export default function App() {
   const [status, setStatus] = useState("Idle");
   const [selectedTrack, setSelectedTrack] = useState(null);
   const [fadeOutEnabled, setFadeOutEnabled] = useState(true);
+
+  // Section state used by the UI
   const [currentSectionName, setCurrentSectionName] = useState(null);
   const [queuedSectionName, setQueuedSectionName] = useState(null);
 
+  // Create engine once
   const engineRef = useRef(null);
   if (!engineRef.current) {
-    engineRef.current = new AudioEngine({ onStatus: setStatus });
+    engineRef.current = new AudioEngine({
+      onStatus: setStatus,
+      onSectionChange: (name) => setCurrentSectionName(name ?? null),
+    });
   }
   const engine = engineRef.current;
 
-  // keep engine data & settings current
+  // Keep engine data in sync
   useEffect(() => {
     engine.setData({ clips, sections, tracks });
   }, [engine, clips, sections, tracks]);
 
+  // Keep engine fade setting in sync
   useEffect(() => {
     engine.setFadeOutEnabled(fadeOutEnabled);
   }, [engine, fadeOutEnabled]);
 
-  // when a track is selected, set current section to its firstSection
+  // When a track is selected, point UI at its first section
   useEffect(() => {
     if (!selectedTrack) {
       setCurrentSectionName(null);
@@ -42,21 +49,27 @@ export default function App() {
     setQueuedSectionName(null);
   }, [selectedTrack, tracks]);
 
-  // Autoplay policy tip: only create/ resume AudioContext on first user gesture
-  // You can do this via a "Enable Audio" button if you hit browser restrictions.
-
+  // Derived: firstSection of the selected track (for Transport button label)
   const firstSection = useMemo(() => {
     if (!selectedTrack) return null;
     const track = tracks[selectedTrack];
     return track ? track.firstSection : null;
-  }, [tracks, selectedTrack]);
+  }, [selectedTrack, tracks]);
 
-  // when user taps Play (existing Transport), also update currentSection for UI
-  // (Stage 1: this is just for display; engine transition hookup comes in Stage 2)
+  // Handlers
   const handlePlaySection = (sectionName) => {
-    setCurrentSectionName(sectionName);
-    engine.playSection(sectionName);
     setQueuedSectionName(null);
+    engine.clearQueuedSection?.();
+    engine.playSection(sectionName);
+  };
+
+  const handleStop = () => {
+    engine.stopTrack(true);
+  };
+
+  const handleSelectTrack = async (name) => {
+    setSelectedTrack(name);
+    await engine.preloadTrack(name);
   };
 
   return (
@@ -64,29 +77,23 @@ export default function App() {
       <h1>Wizamp</h1>
       <StatusBar text={loading ? "Loading data…" : status} />
 
-      {/* track selector unchanged */}
       <div style={{ marginTop: 20 }}>
         <TrackSelector
           tracks={tracks}
           value={selectedTrack}
-          onChange={async (name) => {
-            setSelectedTrack(name);
-            await engine.preloadTrack(name);
-          }}
+          onChange={handleSelectTrack}
         />
       </div>
 
-      {/* transport unchanged, but call our wrapper */}
       {selectedTrack && firstSection && (
         <Transport
           firstSectionName={firstSection}
           firstSectionLabel={sections[firstSection]?.defaultDisplayName}
           onPlaySection={handlePlaySection}
-          onStop={() => engine.stopTrack(true)}
+          onStop={handleStop}
         />
       )}
 
-      {/* NEW: section panel shows options branching from the *current* section */}
       {currentSectionName && (
         <SectionPanel
           sections={sections}
@@ -94,7 +101,11 @@ export default function App() {
           queuedSectionName={queuedSectionName}
           onToggleQueuedSection={(nameOrNull) => {
             setQueuedSectionName(nameOrNull);
-            // Stage 1: UI only. (We’ll call engine in Stage 2.)
+            if (nameOrNull) {
+              engine.queueSectionTransition(nameOrNull);
+              console.log("Queued section:", nameOrNull);
+            }
+            else engine.clearQueuedSection();
           }}
         />
       )}

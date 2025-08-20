@@ -1,16 +1,10 @@
 {
   "clips": {
-    "BleepBloop_end": {
-      "file": "BleepBloop_end.ogg",
-      "loopPoint": 16.153855,
-      "clipEnd": 16.153855,
-      "nextClip": []
-    },
     "BleepBloop_intro": {
-      "file": "BleepBloop_intro.ogg",
+      "file": "BleepBloop_introTEST.ogg",
       "loopPoint": 4.615397,
       "clipEnd": 11.538481,
-      "nextClip": []
+      "nextClip": ["BleepBloop_intro"]
     },
     "BleepBloop_main_a": {
       "file": "BleepBloop_main_a.ogg",
@@ -36,7 +30,7 @@
       "clipEnd": 16.153855,
       "nextClip": ["BleepBloop_main_a"]
     },
-    "BleepBloopRANDOM_end": {
+    "BleepBloop_end": {
       "file": "BleepBloop_end.ogg",
       "loopPoint": 16.153855,
       "clipEnd": 16.153855,
@@ -46,7 +40,7 @@
       "file": "BleepBloop_intro.ogg",
       "loopPoint": 4.615397,
       "clipEnd": 11.538481,
-      "nextClip": []
+      "nextClip": ["BleepBloopRANDOM_intro"]
     },
     "BleepBloopRANDOM_main_a": {
       "file": "BleepBloop_main_a.ogg",
@@ -72,23 +66,29 @@
       "clipEnd": 16.153855,
       "nextClip": ["BleepBloopRANDOM_main_a", "BleepBloopRANDOM_main_b", "BleepBloopRANDOM_main_c"]
     },
+    "BleepBloopRANDOM_end": {
+      "file": "BleepBloop_end.ogg",
+      "loopPoint": 16.153855,
+      "clipEnd": 16.153855,
+      "nextClip": []
+    },
     "Follow the Moth": {
       "file": "Follow the Moth.ogg",
       "loopPoint": 116.170227,
       "clipEnd": 116.170227,
-      "nextClip": []
+      "nextClip": ["Follow the Moth"]
     },
     "The Ashwights Attack": {
       "file": "The Ashwights Attack.ogg",
       "loopPoint": 144.915261,
       "clipEnd": 144.915261,
-      "nextClip": []
+      "nextClip": ["The Ashwights Attack"]
     },
     "Tommy's Haunted Thoughts (reprise)": {
       "file": "Tommy's Haunted Thoughts (reprise).ogg",
       "loopPoint": 120,
       "clipEnd": 120,
-      "nextClip": []
+      "nextClip": ["Tommy's Haunted Thoughts (reprise)"]
     }
   }
 }

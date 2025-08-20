@@ -14,8 +14,7 @@
     },
     "BleepBloop_end": {
       "defaultDisplayName": "End",
-      "firstClip": "BleepBloop_main_a",
-      "nextSection": "BleepBloop_end",
+      "firstClip": "BleepBloop_end",
       "autoTransition": false
     },
     "BleepBloopRANDOM_intro": {
@@ -32,8 +31,7 @@
     },
     "BleepBloopRANDOM_end": {
       "defaultDisplayName": "End",
-      "firstClip": "BleepBloopRANDOM_main_a",
-      "nextSection": "BleepBloopRANDOM_end",
+      "firstClip": "BleepBloopRANDOM_end",
       "autoTransition": false
     },
     "Follow the Moth": {

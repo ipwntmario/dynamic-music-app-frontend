@@ -3,14 +3,18 @@
 // Exposes the same methods you already use.
 
 export class AudioEngine {
-  constructor({ onStatus } = {}) {
+  constructor({ onStatus, onSectionChange } = {}) {
     this.onStatus = onStatus || (() => {});
+    this.onSectionChange = onSectionChange || (() => {});
     this.audioCtx = null;
     this.masterGain = null;
     this.fadeOutEnabled = true;
 
-    this.activeClips = {};           // { clipName: { source, gainNode, buffer } }
-    this.scheduledTimeouts = [];     // [timeoutId]
+    this.currentSectionName = null;
+    this.queuedNextSectionName = null;
+
+    this.activeClips = {};       // { clipName: { source, gainNode, buffer } }
+    this.scheduledTimeouts = []; // [timeoutId]
     this.clipData = {};
     this.sectionData = {};
     this.trackData = {};
@@ -40,6 +44,25 @@ export class AudioEngine {
   clearScheduled() {
     this.scheduledTimeouts.forEach(clearTimeout);
     this.scheduledTimeouts = [];
+  }
+
+  setCurrentSection(name) {
+    this.currentSectionName = name || null;
+    this.onSectionChange?.(this.currentSectionName);
+  }
+
+  queueSectionTransition(name) {
+    this.queuedNextSectionName = name || null; // pass null to clear
+    if (this.queuedNextSectionName) {
+      this._retargetSelfLoopers("toClipEnd");
+    } else {
+      this._retargetSelfLoopers("toLoopPoint");
+    }
+  }
+
+clearQueuedSection() {
+    this.queuedNextSectionName = null;
+    this._retargetSelfLoopers("toLoopPoint");
   }
 
   stopTrack(withFade = true) {
@@ -101,6 +124,7 @@ export class AudioEngine {
       console.error(`Section '${sectionName}' not found`);
       return;
     }
+    this.setCurrentSection(sectionName);
     this.playClip(section.firstClip);
   }
 
@@ -116,19 +140,21 @@ export class AudioEngine {
     const { buffer } = entry;
     const now = ctx.currentTime;
 
+    // stop previous instance for this clip
     if (entry.source) {
       try { entry.source.stop(); } catch {}
     }
 
+    // new source per “play”
     const source = ctx.createBufferSource();
     source.buffer = buffer;
 
-    const hasNext = Array.isArray(clip.nextClip) && clip.nextClip.length > 0;
-    const loopEndPoint = (!hasNext)
+    const hasNextInClip = Array.isArray(clip.nextClip) && clip.nextClip.length > 0;
+    const loopEndPoint = (!hasNextInClip)
       ? (clip.loopPoint ?? buffer.duration)
       : (clip.clipEnd ?? buffer.duration);
 
-    source.loop = !hasNext;
+    source.loop = !hasNextInClip;
     source.loopStart = clip.loopStart || 0;
     source.loopEnd  = loopEndPoint;
 
@@ -137,38 +163,115 @@ export class AudioEngine {
     source.connect(gainNode).connect(this.masterGain);
     source.start(0, clip.loopStart || 0);
 
+    // update ref
     this.activeClips[clipName] = { source, gainNode, buffer };
 
+    // fade in
     gainNode.gain.cancelScheduledValues(now);
     gainNode.gain.setValueAtTime(gainNode.gain.value, now);
     gainNode.gain.linearRampToValueAtTime(1.0, now + 0.2);
 
     this.onStatus(`Playing: ${clipName}`);
 
-    if (hasNext) {
-      const timeUntilLoopPoint = (clip.loopPoint ?? buffer.duration) - (clip.loopStart || 0);
-      const id = setTimeout(() => {
-        const arr = clip.nextClip;
-        const next = arr.length > 1 ? arr[Math.floor(Math.random() * arr.length)] : arr[0];
+    // Single unified scheduler:
 
-        if (this.clipData[next] && this.activeClips[next]) {
-          this.playClip(next);
+    // record timing so we can reschedule on loopers
+    const startedAt = now;
+    const offsetAtStart = clip.loopStart || 0;
+    this.activeClips[clipName] = { source, gainNode, buffer, startedAt, offsetAtStart };
+
+    // fade in
+    gainNode.gain.cancelScheduledValues(now);
+    gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+    gainNode.gain.linearRampToValueAtTime(1.0, now + 0.2);
+
+    this.onStatus(`Playing: ${clipName}`);
+
+    // Always schedule a loop-point check so late queues are honored
+    const scheduleLoopCheck = () => {
+      // how long from *now* until we reach the next loop point?
+      const elapsed = this.audioCtx.currentTime - startedAt;
+      const timeFromStartToLoop = (clip.loopPoint ?? buffer.duration) - offsetAtStart;
+
+      let waitSec = timeFromStartToLoop - elapsed;
+      // If we already passed it (can happen if code paused in dev tools), roll to next cycle
+      if (waitSec < 0) {
+        // On non-looping sources (hasNextInClip), we still want an immediate check
+        // to avoid missing the window.
+        if (!source.loop) {
+          waitSec = 0;
+        } else {
+          const cycle = (clip.loopPoint ?? buffer.duration) - (clip.loopStart || 0);
+          waitSec = ((-waitSec) % cycle);
+        }
+      }
+
+      const id = setTimeout(() => {
+        let nextClipName = null;
+        const hasNextInClip = Array.isArray(clip.nextClip) && clip.nextClip.length > 0;
+
+        if (this.queuedNextSectionName) {
+          const targetSection = this.sectionData[this.queuedNextSectionName];
+          nextClipName = targetSection?.firstClip || null;
+          if (targetSection) this.setCurrentSection(this.queuedNextSectionName);
+          this.clearQueuedSection();
+        } else if (hasNextInClip) {
+          const arr = clip.nextClip;
+          nextClipName = arr.length > 1 ? arr[Math.floor(Math.random() * arr.length)] : arr[0];
         }
 
+        if (nextClipName && this.clipData[nextClipName] && this.activeClips[nextClipName]) {
+          this.playClip(nextClipName);
+        } else {
+          // No transition happened; if this clip is looping, reschedule the next loop point
+          if (source.loop) scheduleLoopCheck();
+        }
+
+        // Fade this clip at clipEnd relative to loop point
         const clipEndTime = clip.clipEnd ?? buffer.duration;
         const delta = clipEndTime - (clip.loopPoint ?? buffer.duration);
-        gainNode.gain.setValueAtTime(0, ctx.currentTime + Math.max(0, delta));
-      }, timeUntilLoopPoint * 1000);
+        gainNode.gain.setValueAtTime(0, this.audioCtx.currentTime + Math.max(0, delta));
+      }, Math.max(0, waitSec) * 1000);
+
       this.scheduledTimeouts.push(id);
-    }
+    };
+
+    scheduleLoopCheck();
+
   }
 
   // For future net-sync: schedule by *audio time*
-  // Example: schedule(() => this.playClip(name), atAudioTime)
   schedule(fn, atAudioTime) {
     const ctx = this.ensureContext();
     const ms = Math.max(0, (atAudioTime - ctx.currentTime) * 1000);
     const id = setTimeout(fn, ms);
     this.scheduledTimeouts.push(id);
   }
+
+  // Dynamically retarget self-loopers' loopEnd.
+  // mode: "toClipEnd" | "toLoopPoint"
+  _retargetSelfLoopers(mode) {
+    Object.entries(this.activeClips).forEach(([name, entry]) => {
+      const clip = this.clipData[name];
+      if (!clip || !entry?.source) return;
+
+      const hasNextInClip = Array.isArray(clip.nextClip) && clip.nextClip.length > 0;
+      if (hasNextInClip) return; // only adjust pure self-loopers
+
+      const { buffer, source } = entry;
+      const loopPoint = clip.loopPoint ?? buffer.duration;
+      const clipEnd   = clip.clipEnd  ?? buffer.duration;
+
+      if (mode === "toClipEnd") {
+        // let the tail (loopPoint → clipEnd) play out while we crossfade
+        source.loop = true;
+        source.loopEnd = clipEnd;
+      } else {
+        // restore original behavior
+        source.loop = true;
+        source.loopEnd = loopPoint;
+      }
+    });
+  }
+
 }
