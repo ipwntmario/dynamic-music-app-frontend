@@ -1,147 +1,174 @@
-let audioCtx;
-let masterGain;
-let activeClips = {};
-let scheduledEvents = [];
+// A small class so React components stay tiny.
+// Holds: AudioContext, master gain, active clips, scheduled events.
+// Exposes the same methods you already use.
 
-/**
- * Initialize audio context and master gain.
- */
-export function initAudio() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    masterGain = audioCtx.createGain();
-    masterGain.connect(audioCtx.destination);
+export class AudioEngine {
+  constructor({ onStatus } = {}) {
+    this.onStatus = onStatus || (() => {});
+    this.audioCtx = null;
+    this.masterGain = null;
+    this.fadeOutEnabled = true;
+
+    this.activeClips = {};           // { clipName: { source, gainNode, buffer } }
+    this.scheduledTimeouts = [];     // [timeoutId]
+    this.clipData = {};
+    this.sectionData = {};
+    this.trackData = {};
   }
-  return audioCtx;
-}
 
-/**
- * Preload all clips in a track into AudioBuffers.
- */
-export async function preloadTrack(track, clipData) {
-  if (!audioCtx) initAudio();
-  const clipNames = track?.clips || [];
+  setData({ clips, sections, tracks }) {
+    this.clipData = clips || {};
+    this.sectionData = sections || {};
+    this.trackData = tracks || {};
+  }
 
-  for (const clipName of clipNames) {
-    const clip = clipData[clipName];
-    if (clip && !clip.buffer) {
-      const res = await fetch(clip.filePath);
-      const arrayBuffer = await res.arrayBuffer();
-      clip.buffer = await audioCtx.decodeAudioData(arrayBuffer);
+  ensureContext() {
+    if (this.audioCtx) return this.audioCtx;
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const gain = ctx.createGain();
+    gain.connect(ctx.destination);
+    gain.gain.setValueAtTime(1, ctx.currentTime);
+    this.audioCtx = ctx;
+    this.masterGain = gain;
+    return ctx;
+  }
+
+  setFadeOutEnabled(bool) {
+    this.fadeOutEnabled = !!bool;
+  }
+
+  clearScheduled() {
+    this.scheduledTimeouts.forEach(clearTimeout);
+    this.scheduledTimeouts = [];
+  }
+
+  stopTrack(withFade = true) {
+    if (!this.audioCtx) return;
+    this.clearScheduled();
+
+    Object.values(this.activeClips).forEach(({ source, gainNode }) => {
+      if (withFade && this.fadeOutEnabled) {
+        const fade = 8.0;
+        const now = this.audioCtx.currentTime;
+        gainNode.gain.cancelScheduledValues(now);
+        gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+        gainNode.gain.linearRampToValueAtTime(0, now + fade);
+        setTimeout(() => { try { source.stop(); } catch {} }, fade * 1000 + 50);
+      } else {
+        try { source.stop(); } catch {}
+      }
+    });
+
+    this.activeClips = {};
+    this.onStatus("Stopped");
+  }
+
+  async preloadTrack(trackName) {
+    const ctx = this.ensureContext();
+    this.stopTrack(false);
+
+    const track = this.trackData[trackName];
+    if (!track || !track.allClips) return;
+
+    this.activeClips = {};
+
+    for (const clipName of track.allClips) {
+      const clip = this.clipData[clipName];
+      if (!clip) continue;
+
+      const res = await fetch(`/audio/${clip.file}`);
+      const arr = await res.arrayBuffer();
+      const buffer = await ctx.decodeAudioData(arr);
+
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+
+      const gainNode = ctx.createGain();
+      gainNode.gain.setValueAtTime(0, ctx.currentTime);
+      source.connect(gainNode).connect(this.masterGain);
+      source.start(0);
+
+      this.activeClips[clipName] = { source, gainNode, buffer };
+    }
+
+    this.onStatus(`Track '${trackName}' preloaded`);
+  }
+
+  playSection(sectionName) {
+    const section = this.sectionData[sectionName];
+    if (!section) {
+      console.error(`Section '${sectionName}' not found`);
+      return;
+    }
+    this.playClip(section.firstClip);
+  }
+
+  playClip = (clipName) => {
+    const ctx = this.ensureContext();
+    const clip = this.clipData[clipName];
+    const entry = this.activeClips[clipName];
+    if (!clip || !entry) {
+      console.error(`Clip '${clipName}' not found or not loaded`);
+      return;
+    }
+
+    const { buffer } = entry;
+    const now = ctx.currentTime;
+
+    if (entry.source) {
+      try { entry.source.stop(); } catch {}
+    }
+
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+
+    const hasNext = Array.isArray(clip.nextClip) && clip.nextClip.length > 0;
+    const loopEndPoint = (!hasNext)
+      ? (clip.loopPoint ?? buffer.duration)
+      : (clip.clipEnd ?? buffer.duration);
+
+    source.loop = !hasNext;
+    source.loopStart = clip.loopStart || 0;
+    source.loopEnd  = loopEndPoint;
+
+    const gainNode = ctx.createGain();
+    gainNode.gain.setValueAtTime(0, now);
+    source.connect(gainNode).connect(this.masterGain);
+    source.start(0, clip.loopStart || 0);
+
+    this.activeClips[clipName] = { source, gainNode, buffer };
+
+    gainNode.gain.cancelScheduledValues(now);
+    gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+    gainNode.gain.linearRampToValueAtTime(1.0, now + 0.2);
+
+    this.onStatus(`Playing: ${clipName}`);
+
+    if (hasNext) {
+      const timeUntilLoopPoint = (clip.loopPoint ?? buffer.duration) - (clip.loopStart || 0);
+      const id = setTimeout(() => {
+        const arr = clip.nextClip;
+        const next = arr.length > 1 ? arr[Math.floor(Math.random() * arr.length)] : arr[0];
+
+        if (this.clipData[next] && this.activeClips[next]) {
+          this.playClip(next);
+        }
+
+        const clipEndTime = clip.clipEnd ?? buffer.duration;
+        const delta = clipEndTime - (clip.loopPoint ?? buffer.duration);
+        gainNode.gain.setValueAtTime(0, ctx.currentTime + Math.max(0, delta));
+      }, timeUntilLoopPoint * 1000);
+      this.scheduledTimeouts.push(id);
     }
   }
-}
 
-/**
- * Play a single clip.
- */
-export function playClip(
-  clipName,
-  clipData,
-  sectionData,
-  queuedSection,
-  setCurrentSection,
-  setQueuedSection,
-  setStatus
-) {
-  const clip = clipData[clipName];
-  if (!clip || !clip.buffer) return;
-
-  const source = audioCtx.createBufferSource();
-  source.buffer = clip.buffer;
-
-  const gainNode = audioCtx.createGain();
-  gainNode.gain.value = 1;
-  source.connect(gainNode).connect(masterGain);
-
-  const startTime = audioCtx.currentTime;
-  const clipStart = clip.clipStart || 0;
-  const clipEnd = clip.clipEnd || clip.buffer.duration;
-  const loopStart = clip.loopStart ?? clipStart;
-  const loopEnd = clip.loopEnd ?? clipEnd;
-  const loopPoint = clip.loopPoint ?? loopStart;
-
-  source.loop = true;
-  source.loopStart = loopStart;
-  source.loopEnd = loopEnd;
-
-  source.start(startTime, clipStart);
-
-  activeClips[clipName] = {
-    source,
-    gainNode,
-    startTime,
-    clipStart,
-    clipEnd,
-    loopPoint,
-  };
-
-  const duration = clipEnd - clipStart;
-
-  const scheduleEvent = (when, cb) => {
-    const id = setTimeout(cb, when * 1000);
-    scheduledEvents.push(id);
-  };
-
-  // Schedule transition at loopPoint
-  scheduleEvent(loopPoint, () => {
-    const nextSection = queuedSection;
-    if (nextSection && sectionData[nextSection]) {
-      setQueuedSection(null);
-      playSection(nextSection, sectionData, clipData, setCurrentSection, setQueuedSection, setStatus);
-    }
-  });
-
-  // Schedule stop at clipEnd
-  scheduleEvent(duration, () => {
-    source.stop();
-    delete activeClips[clipName];
-  });
-
-  setCurrentSection(clip.section);
-  setStatus(`Playing section: ${clip.section}, clip: ${clipName}`);
-}
-
-/**
- * Play a section (picks first clip of the section).
- */
-export function playSection(
-  sectionName,
-  sectionData,
-  clipData,
-  setCurrentSection,
-  setQueuedSection,
-  setStatus
-) {
-  const section = sectionData[sectionName];
-  if (!section || !section.clips?.length) return;
-
-  const clipName = section.clips[0];
-  playClip(clipName, clipData, sectionData, null, setCurrentSection, setQueuedSection, setStatus);
-}
-
-/**
- * Stop everything, optionally with fade-out.
- */
-export function stopTrack(withFade = true, fadeOutEnabled = true) {
-  if (withFade && fadeOutEnabled) {
-    const fadeTime = 2;
-    const now = audioCtx.currentTime;
-    masterGain.gain.cancelScheduledValues(now);
-    masterGain.gain.setValueAtTime(masterGain.gain.value, now);
-    masterGain.gain.linearRampToValueAtTime(0, now + fadeTime);
-
-    setTimeout(() => {
-      Object.values(activeClips).forEach(({ source }) => source.stop());
-      activeClips = {};
-      scheduledEvents.forEach((id) => clearTimeout(id));
-      scheduledEvents = [];
-      masterGain.gain.setValueAtTime(1, audioCtx.currentTime);
-    }, fadeTime * 1000);
-  } else {
-    Object.values(activeClips).forEach(({ source }) => source.stop());
-    activeClips = {};
-    scheduledEvents.forEach((id) => clearTimeout(id));
-    scheduledEvents = [];
+  // For future net-sync: schedule by *audio time*
+  // Example: schedule(() => this.playClip(name), atAudioTime)
+  schedule(fn, atAudioTime) {
+    const ctx = this.ensureContext();
+    const ms = Math.max(0, (atAudioTime - ctx.currentTime) * 1000);
+    const id = setTimeout(fn, ms);
+    this.scheduledTimeouts.push(id);
   }
 }
