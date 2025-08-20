@@ -191,7 +191,7 @@ function App() {
 
   return (
     <div style={{ fontFamily: "sans-serif", padding: "20px" }}>
-      <h1>Dynamic Music Player</h1>
+      <h1>Wizamp</h1>
       <p>Status: {status}</p>
 
       <div style={{ marginTop: "20px" }}>
