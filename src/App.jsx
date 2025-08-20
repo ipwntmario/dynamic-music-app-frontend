@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AudioEngine } from "./audio/AudioEngine";
+import { AudioEngine } from "./audio/audioEngine";
 import { useMusicData } from "./data/useMusicData";
 import TrackSelector from "./components/TrackSelector";
 import Transport from "./components/Transport";
 import StatusBar from "./components/StatusBar";
+import SectionPanel from "./components/SectionPanel";
 
 export default function App() {
   const { clips, sections, tracks, loading } = useMusicData();
@@ -11,6 +12,8 @@ export default function App() {
   const [status, setStatus] = useState("Idle");
   const [selectedTrack, setSelectedTrack] = useState(null);
   const [fadeOutEnabled, setFadeOutEnabled] = useState(true);
+  const [currentSectionName, setCurrentSectionName] = useState(null);
+  const [queuedSectionName, setQueuedSectionName] = useState(null);
 
   const engineRef = useRef(null);
   if (!engineRef.current) {
@@ -27,6 +30,18 @@ export default function App() {
     engine.setFadeOutEnabled(fadeOutEnabled);
   }, [engine, fadeOutEnabled]);
 
+  // when a track is selected, set current section to its firstSection
+  useEffect(() => {
+    if (!selectedTrack) {
+      setCurrentSectionName(null);
+      setQueuedSectionName(null);
+      return;
+    }
+    const first = tracks[selectedTrack]?.firstSection || null;
+    setCurrentSectionName(first);
+    setQueuedSectionName(null);
+  }, [selectedTrack, tracks]);
+
   // Autoplay policy tip: only create/ resume AudioContext on first user gesture
   // You can do this via a "Enable Audio" button if you hit browser restrictions.
 
@@ -36,12 +51,20 @@ export default function App() {
     return track ? track.firstSection : null;
   }, [tracks, selectedTrack]);
 
+  // when user taps Play (existing Transport), also update currentSection for UI
+  // (Stage 1: this is just for display; engine transition hookup comes in Stage 2)
+  const handlePlaySection = (sectionName) => {
+    setCurrentSectionName(sectionName);
+    engine.playSection(sectionName);
+    setQueuedSectionName(null);
+  };
+
   return (
     <div style={{ fontFamily: "sans-serif", padding: 20 }}>
       <h1>Wizamp</h1>
-
       <StatusBar text={loading ? "Loading data…" : status} />
 
+      {/* track selector unchanged */}
       <div style={{ marginTop: 20 }}>
         <TrackSelector
           tracks={tracks}
@@ -53,12 +76,26 @@ export default function App() {
         />
       </div>
 
+      {/* transport unchanged, but call our wrapper */}
       {selectedTrack && firstSection && (
         <Transport
           firstSectionName={firstSection}
           firstSectionLabel={sections[firstSection]?.defaultDisplayName}
-          onPlaySection={(sectionName) => engine.playSection(sectionName)}
+          onPlaySection={handlePlaySection}
           onStop={() => engine.stopTrack(true)}
+        />
+      )}
+
+      {/* NEW: section panel shows options branching from the *current* section */}
+      {currentSectionName && (
+        <SectionPanel
+          sections={sections}
+          currentSectionName={currentSectionName}
+          queuedSectionName={queuedSectionName}
+          onToggleQueuedSection={(nameOrNull) => {
+            setQueuedSectionName(nameOrNull);
+            // Stage 1: UI only. (We’ll call engine in Stage 2.)
+          }}
         />
       )}
 
