@@ -25,6 +25,8 @@ dist-ssr
 
 # Media directories
 # public/audio/*
+*.wav
+*.ogg.bak
 
 # Media configuration files
 # clipData.json
