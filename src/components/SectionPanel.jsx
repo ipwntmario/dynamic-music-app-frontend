@@ -11,6 +11,7 @@ export default function SectionPanel({
   sections,
   currentSectionName,
   queuedSectionName,
+  autoLockedTargets = [],              // NEW
   onToggleQueuedSection, // (sectionName|null) => void
 }) {
   const current = sections[currentSectionName];
@@ -26,20 +27,36 @@ export default function SectionPanel({
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         {nextSections.map((name) => {
           const isQueued = queuedSectionName === name;
+          const isAutoLocked = autoLockedTargets.includes(name);
+          const disabled = isAutoLocked;
+
+          // colors:
+          // - normal queued: green
+          // - auto locked queued: grey-green
+          // - auto locked not queued: grey
+          const bg = isQueued
+            ? (isAutoLocked ? "#6b8e23" /* greyish green */ : "green")
+            : (isAutoLocked ? "#e0e0e0" /* grey */ : "white");
+          const color = isQueued || isAutoLocked ? "white" : "black";
+          const border = isAutoLocked ? "1px solid #bdbdbd" : "1px solid #ccc";
+
           return (
             <button
               key={name}
+              disabled={disabled}
               onClick={() => {
+                if (disabled) return;
                 if (isQueued) onToggleQueuedSection(null); // cancel
                 else onToggleQueuedSection(name);          // set new queued
               }}
               style={{
                 padding: "8px 14px",
                 borderRadius: 8,
-                border: "1px solid #ccc",
-                cursor: "pointer",
-                background: isQueued ? "green" : "white",
-                color: isQueued ? "white" : "black",
+                border,
+                cursor: disabled ? "not-allowed" : "pointer",
+                background: bg,
+                color,
+                opacity: disabled && !isQueued ? 0.8 : 1,
               }}
               title={sections[name]?.defaultDisplayName ?? name}
             >

@@ -23,6 +23,7 @@ export default function App() {
     engineRef.current = new AudioEngine({
       onStatus: setStatus,
       onSectionChange: (name) => setCurrentSectionName(name ?? null),
+      onQueueChange: (nameOrNull) => setQueuedSectionName(nameOrNull), // NEW
     });
   }
   const engine = engineRef.current;
@@ -55,6 +56,13 @@ export default function App() {
     const track = tracks[selectedTrack];
     return track ? track.firstSection : null;
   }, [selectedTrack, tracks]);
+
+  const autoLockedTargets = useMemo(() => {
+    const section = sections[currentSectionName];
+    if (!section?.autoTransition) return [];
+    const ns = section.nextSection;
+    return Array.isArray(ns) ? ns : (ns ? [ns] : []);
+  }, [sections, currentSectionName]);
 
   // Handlers
   const handlePlaySection = (sectionName) => {
@@ -99,6 +107,7 @@ export default function App() {
           sections={sections}
           currentSectionName={currentSectionName}
           queuedSectionName={queuedSectionName}
+          autoLockedTargets={autoLockedTargets}                 // NEW
           onToggleQueuedSection={(nameOrNull) => {
             setQueuedSectionName(nameOrNull);
             if (nameOrNull) {
@@ -117,7 +126,7 @@ export default function App() {
             checked={fadeOutEnabled}
             onChange={(e) => setFadeOutEnabled(e.target.checked)}
           />{" "}
-          Fade out on stop
+          "Stop" button fades out
         </label>
       </div>
     </div>
