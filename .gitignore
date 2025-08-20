@@ -24,8 +24,8 @@ dist-ssr
 *.sw?
 
 # Media directories
-public/audio/*
+# public/audio/*
 
 # Media configuration files
-clipData.json
-sectionData.json
+# clipData.json
+# sectionData.json
