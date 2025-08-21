@@ -22,6 +22,17 @@
                    "BleepBloopRANDOM_main_c",
                    "BleepBloopRANDOM_main_d"]
     },
+    "BleepBloopTestyMcTestface": {
+      "defaultDisplayName": "BleepBloop Testception (TEST TRACK)",
+      "firstSection": "BleepBloopTEST_intro",
+      "simple": false,
+      "allClips": ["BleepBloop_end",
+                   "BleepBloop_introTEST",
+                   "BleepBloop_main_aTEST",
+                   "BleepBloop_main_b",
+                   "BleepBloop_main_c",
+                   "BleepBloop_main_d"]
+    },
     "Follow the Moth": {
       "defaultDisplayName": "Follow the Moth",
       "firstSection": "Follow the Moth",

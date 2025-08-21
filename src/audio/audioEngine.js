@@ -7,15 +7,15 @@ export class AudioEngine {
     this.onStatus = onStatus || (() => {});
     this.onSectionChange = onSectionChange || (() => {});
     this.onQueueChange = onQueueChange || (() => {});
-    this.onReady = onReady || (() => {});         // NEW
+    this.onReady = onReady || (() => {});
 
     this.audioCtx = null;
     this.masterGain = null;
-    this.fadeOutEnabled = true;
+    this.fadeOutSeconds = 4;                        // ← NEW default
 
     this.currentSectionName = null;
     this.queuedNextSectionName = null;
-    this.lastTrackName = null;                    // NEW
+    this.lastTrackName = null;
 
     this.activeClips = {};
     this.scheduledTimeouts = [];
@@ -41,8 +41,9 @@ export class AudioEngine {
     return ctx;
   }
 
-  setFadeOutEnabled(bool) {
-    this.fadeOutEnabled = !!bool;
+  setFadeOutSeconds(secs) {                         // ← NEW
+    const s = Math.max(0, Math.min(30, Number(secs) || 0));
+    this.fadeOutSeconds = s;
   }
 
   clearScheduled() {
@@ -71,8 +72,8 @@ export class AudioEngine {
     this.clearScheduled();
 
     Object.values(this.activeClips).forEach(({ source, gainNode }) => {
-      if (withFade && this.fadeOutEnabled) {
-        const fade = 8.0;
+      const fade = this.fadeOutSeconds;            // ← use live value
+      if (withFade && fade > 0) {
         const now = this.audioCtx.currentTime;
         gainNode.gain.cancelScheduledValues(now);
         gainNode.gain.setValueAtTime(gainNode.gain.value, now);
@@ -122,7 +123,7 @@ export class AudioEngine {
 
   async resetToTrackStart() {
     if (!this.lastTrackName) return;
-    this.clearQueuedSection();
+    this.clearQueuedSection?.();
     this.stopTrack(false); // hard stop without fade
     await this.preloadTrack(this.lastTrackName); // puts us back to “Track 'X' preloaded”
     const track = this.trackData[this.lastTrackName];
@@ -131,13 +132,13 @@ export class AudioEngine {
   }
 
   stopAndReload() {
-    const fade = 8.0; // keep in sync with stopTrack
+    const fade = this.fadeOutSeconds;              // ← use live value at click time
     return new Promise((resolve) => {
       this.stopTrack(true);
       const id = setTimeout(async () => {
         await this.resetToTrackStart();
         resolve();
-      }, fade * 1000 + 80);
+      }, (fade > 0 ? fade * 1000 + 80 : 80));      // ← handle 0s “instant”
       this.scheduledTimeouts.push(id);
     });
   }

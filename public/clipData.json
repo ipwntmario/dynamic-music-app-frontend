@@ -1,7 +1,7 @@
 {
   "clips": {
     "BleepBloop_intro": {
-      "file": "BleepBloop_introTEST.ogg",
+      "file": "BleepBloop_intro.ogg",
       "loopPoint": 4.615397,
       "clipEnd": 11.538481,
       "nextClip": ["BleepBloop_intro"]
@@ -67,6 +67,42 @@
       "nextClip": ["BleepBloopRANDOM_main_a", "BleepBloopRANDOM_main_b", "BleepBloopRANDOM_main_c"]
     },
     "BleepBloopRANDOM_end": {
+      "file": "BleepBloop_end.ogg",
+      "loopPoint": 16.153855,
+      "clipEnd": 16.153855,
+      "nextClip": []
+    },
+    "BleepBloopTEST_intro": {
+      "file": "BleepBloop_introTEST.ogg",
+      "loopPoint": 4.615397,
+      "clipEnd": 11.538481,
+      "nextClip": ["BleepBloopTEST_intro"]
+    },
+    "BleepBloopTEST_main_a": {
+      "file": "BleepBloop_main_aTEST.ogg",
+      "loopPoint": 9.230771,
+      "clipEnd": 16.153855,
+      "nextClip": ["BleepBloopTEST_main_b", "BleepBloopTEST_main_c", "BleepBloopTEST_main_d"]
+    },
+    "BleepBloopTEST_main_b": {
+      "file": "BleepBloop_main_b.ogg",
+      "loopPoint": 9.230771,
+      "clipEnd": 16.153855,
+      "nextClip": ["BleepBloopTEST_main_a", "BleepBloopTEST_main_c", "BleepBloopTEST_main_d"]
+    },
+    "BleepBloopTEST_main_c": {
+      "file": "BleepBloop_main_c.ogg",
+      "loopPoint": 9.230771,
+      "clipEnd": 16.153855,
+      "nextClip": ["BleepBloopTEST_main_a", "BleepBloopTEST_main_b", "BleepBloopTEST_main_d"]
+    },
+    "BleepBloopTEST_main_d": {
+      "file": "BleepBloop_main_d.ogg",
+      "loopPoint": 9.230771,
+      "clipEnd": 16.153855,
+      "nextClip": ["BleepBloopTEST_main_a", "BleepBloopTEST_main_b", "BleepBloopTEST_main_c"]
+    },
+    "BleepBloopTEST_end": {
       "file": "BleepBloop_end.ogg",
       "loopPoint": 16.153855,
       "clipEnd": 16.153855,

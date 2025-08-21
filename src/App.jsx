@@ -11,7 +11,6 @@ export default function App() {
 
   const [status, setStatus] = useState("Idle");
   const [selectedTrack, setSelectedTrack] = useState(null);
-  const [fadeOutEnabled, setFadeOutEnabled] = useState(true);
 
   const [playDisabled, setPlayDisabled] = useState(false);
 
@@ -21,7 +20,7 @@ export default function App() {
 
   // Setings menu
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [fadeOutSeconds, setFadeOutSeconds] = useState(4); // default 4
+  const [fadeOutSeconds, setFadeOutSeconds] = useState(6); // default 4
 
   // Create engine once
   const engineRef = useRef(null);
@@ -42,8 +41,8 @@ export default function App() {
 
   // Keep engine fade setting in sync
   useEffect(() => {
-    engine.setFadeOutEnabled(fadeOutEnabled);
-  }, [engine, fadeOutEnabled]);
+    engine.setFadeOutSeconds?.(fadeOutSeconds);
+  }, [engine, fadeOutSeconds]);
 
   // When a track is selected, point UI at its first section
   useEffect(() => {
