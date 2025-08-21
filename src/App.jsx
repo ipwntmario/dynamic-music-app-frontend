@@ -25,6 +25,12 @@ export default function App() {
   const [statusOpen, setStatusOpen] = useState(true);   // collapsible status
   const [clipProgress, setClipProgress] = useState(0);  // 0..1 visual bar
 
+  // Volume settings
+  const [trackVolUIOpen, setTrackVolUIOpen] = useState(false);
+  const [trackVolume, setTrackVolume] = useState(1); // 0..1
+  const [userVolume, setUserVolume] = useState(1);   // 0..1 (local)
+
+
   // Create engine once
   const engineRef = useRef(null);
   if (!engineRef.current) {
@@ -115,10 +121,36 @@ export default function App() {
     setClipProgress(0);            // <- snap progress bar to 0 after stop completes
   };
 
+  const loadSavedTrackVolume = (name) => {
+    try {
+      const k = `wizamp:trackVolume:${name}`;
+      const v = localStorage.getItem(k);
+      const num = v == null ? 1 : Math.max(0, Math.min(1, Number(v)));
+      return Number.isFinite(num) ? num : 1;
+    } catch { return 1; }
+  };
+
+  const saveTrackVolume = (name, vol) => {
+    try {
+      const k = `wizamp:trackVolume:${name}`;
+      localStorage.setItem(k, String(vol));
+    } catch {}
+  };
+
   const handleSelectTrack = async (name) => {
     setSelectedTrack(name);
-    await engine.preloadTrack(name);
+    const savedVol = loadSavedTrackVolume(name);
+    setTrackVolume(savedVol);
+    await engine.preloadTrack(name, { trackVolume: savedVol });
   };
+
+  useEffect(() => { engine.setUserVolume?.(userVolume); }, [engine, userVolume]);
+  useEffect(() => {
+    // whenever trackVolume changes for the selected track, apply + persist
+    if (!selectedTrack) return;
+    engine.setTrackVolume?.(trackVolume);
+    saveTrackVolume(selectedTrack, trackVolume);
+  }, [engine, selectedTrack, trackVolume]);
 
   return (
     <div style={{ fontFamily: "sans-serif", padding: 20 }}>
@@ -146,22 +178,62 @@ export default function App() {
       {/* Track Controls */}
       <section style={{ marginBottom: 16 }}>
         <div style={{ fontWeight: 600, marginBottom: 8 }}>Track:</div>
-        <TrackSelector
-          tracks={tracks}
-          value={selectedTrack}
-          onChange={handleSelectTrack}
-        />
-        {selectedTrack && (
-          <Transport
-            isPlaying={isPlaying}
-            onPlay={handlePlay}
-            onStop={handleStop}
-            playLabel="Play"
-            playDisabled={playDisabled}
-            stopStyle={isComplexTrack ? { background: "#400000" } : undefined} // black if simple:false
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <TrackSelector
+            tracks={tracks}
+            value={selectedTrack}
+            onChange={handleSelectTrack}
           />
-        )}
+
+          {/* 🔊 Track volume toggle */}
+          {selectedTrack && (
+            <div style={{ position: "relative" }}>
+              <button
+                aria-label="Track volume"
+                onClick={() => setTrackVolUIOpen(o => !o)}
+                style={{ background: "transparent", border: "1px solid #555", color: "white", borderRadius: 8, padding: "6px 10px", cursor: "pointer" }}
+                title="Track volume (shared)"
+              >
+                🔊
+              </button>
+
+              {trackVolUIOpen && (
+                <div
+                  style={{
+                    position: "absolute", top: "110%", left: 0,
+                    background: "#2a2a2a", color: "white", border: "1px solid #555", borderRadius: 8,
+                    padding: 10, minWidth: 220, zIndex: 2
+                  }}
+                >
+                  <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 6 }}>Track volume (shared)</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ width: 22, textAlign: "right" }}>0</span>
+                    <input
+                      type="range" min={0} max={1} step={0.01}
+                      value={trackVolume}
+                      onChange={(e) => setTrackVolume(Number(e.target.value))}
+                      style={{ flex: 1 }}
+                    />
+                    <span style={{ width: 22, textAlign: "left" }}>1</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {selectedTrack && (
+            <Transport
+              isPlaying={isPlaying}
+              onPlay={handlePlay}
+              onStop={handleStop}
+              playLabel="Play"
+              playDisabled={playDisabled}
+              stopStyle={isComplexTrack ? { background: "#400000" } : undefined}
+            />
+          )}
+        </div>
       </section>
+
 
       {/* Section Controls */}
       {currentSectionName && (
@@ -245,6 +317,25 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Per-user volume (local) */}
+        <div style={{ position: "fixed", right: 20, bottom: 20, background: "#2a2a2a", color: "white",
+                      border: "1px solid #555", borderRadius: 10, padding: "8px 12px", zIndex: 1 }}>
+          <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 4, textAlign: "center" }}>
+            Your volume
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ width: 22, textAlign: "right" }}>0</span>
+            <input
+              type="range" min={0} max={1} step={0.01}
+              value={userVolume}
+              onChange={(e) => setUserVolume(Number(e.target.value))}
+              style={{ width: 180 }}
+              title="This affects only your device"
+            />
+            <span style={{ width: 22, textAlign: "left" }}>1</span>
+          </div>
+        </div>
     </div>
   );
 }

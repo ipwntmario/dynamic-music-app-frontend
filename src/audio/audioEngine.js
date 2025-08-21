@@ -25,6 +25,11 @@ export class AudioEngine {
     this.clipData = {};
     this.sectionData = {};
     this.trackData = {};
+
+    this.userGain = null;   // per-user, local
+    this.trackGain = null;  // per-track, shared
+    this.currentTrackVolume = 1; // 0..1 (for UI syncing, optional)
+
   }
 
   setData({ clips, sections, tracks }) {
@@ -33,14 +38,35 @@ export class AudioEngine {
     this.trackData = tracks || {};
   }
 
+  setTrackVolume(vol01) {
+    const ctx = this.ensureContext();
+    const v = Math.max(0, Math.min(1, Number(vol01) || 0));
+    this.trackGain?.gain.setValueAtTime(v, ctx.currentTime);
+    this.currentTrackVolume = v;
+  }
+
+  setUserVolume(vol01) {
+    const ctx = this.ensureContext();
+    const v = Math.max(0, Math.min(1, Number(vol01) || 0));
+    this.userGain?.gain.setValueAtTime(v, ctx.currentTime);
+  }
+
   ensureContext() {
     if (this.audioCtx) return this.audioCtx;
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const gain = ctx.createGain();
-    gain.connect(ctx.destination);
-    gain.gain.setValueAtTime(1, ctx.currentTime);
-    this.audioCtx = ctx;
-    this.masterGain = gain;
+
+    // create nodes
+    const userGain   = ctx.createGain();   userGain.gain.setValueAtTime(1, ctx.currentTime);
+    const trackGain  = ctx.createGain();   trackGain.gain.setValueAtTime(1, ctx.currentTime);
+
+    // final destination: source -> clipGain -> trackGain -> userGain -> destination
+    trackGain.connect(userGain).connect(ctx.destination);
+
+    // keep refs (masterGain stays for back-compat, but we route to trackGain now)
+    this.audioCtx   = ctx;
+    this.userGain   = userGain;
+    this.trackGain  = trackGain;
+    this.masterGain = trackGain; // <— sources still “connect(..., this.masterGain)”
     return ctx;
   }
 
@@ -93,10 +119,16 @@ export class AudioEngine {
     this.onStatus("Stopped");
   }
 
-  async preloadTrack(trackName) {
+  async preloadTrack(trackName, opts = {}) {
     const ctx = this.ensureContext();
     this.stopTrack(false);
-    this.lastTrackName = trackName;   // NEW
+    this.lastTrackName = trackName;
+
+    // apply provided per-track volume if present
+    const { trackVolume } = opts || {};
+    if (typeof trackVolume === "number") {
+      this.setTrackVolume(trackVolume);
+    }
 
     const track = this.trackData[trackName];
     if (!track || !track.allClips) return;
