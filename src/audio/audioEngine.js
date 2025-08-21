@@ -263,23 +263,15 @@ export class AudioEngine {
     }
     // --- END AUTO-TRANSITION LOGIC ---
 
-    // update ref
-    this.activeClips[clipName] = { source, gainNode, buffer };
-
-    // fade in
-    gainNode.gain.cancelScheduledValues(now);
-    gainNode.gain.setValueAtTime(gainNode.gain.value, now);
-    gainNode.gain.linearRampToValueAtTime(1.0, now + 0.2);
-
-    this.onStatus(`Playing: ${clipName}`);
-    this.lastPlayingClipName = clipName;
-
-    // Single unified scheduler:
-
     // record timing so we can reschedule on loopers
     const startedAt = now;
     const offsetAtStart = clip.loopStart || 0;
+
+    // update ref (include timing fields)
     this.activeClips[clipName] = { source, gainNode, buffer, startedAt, offsetAtStart };
+
+    // remember the currently playing clip for the progress bar
+    this.lastPlayingClipName = clipName;
 
     // fade in
     gainNode.gain.cancelScheduledValues(now);
