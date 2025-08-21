@@ -4,53 +4,53 @@
       "defaultDisplayName": "Intro",
       "firstClip": "BleepBloop_intro",
       "nextSection": "BleepBloop_main",
-      "autoTransition": true
+      "type": "auto"
     },
     "BleepBloop_main": {
       "defaultDisplayName": "Main",
       "firstClip": "BleepBloop_main_a",
       "nextSection": "BleepBloop_end",
-      "autoTransition": false
+      "type": ""
     },
     "BleepBloop_end": {
       "defaultDisplayName": "End",
       "firstClip": "BleepBloop_end",
-      "autoTransition": false
+      "type": "end"
     },
     "BleepBloopRANDOM_intro": {
       "defaultDisplayName": "Intro",
       "firstClip": "BleepBloopRANDOM_intro",
       "nextSection": "BleepBloopRANDOM_main",
-      "autoTransition": true
+      "type": "auto"
     },
     "BleepBloopRANDOM_main": {
       "defaultDisplayName": "Main",
       "firstClip": "BleepBloopRANDOM_main_a",
       "nextSection": "BleepBloopRANDOM_end",
-      "autoTransition": false
+      "type": ""
     },
     "BleepBloopRANDOM_end": {
       "defaultDisplayName": "End",
       "firstClip": "BleepBloopRANDOM_end",
-      "autoTransition": false
+      "type": "end"
     },
     "Follow the Moth": {
       "defaultDisplayName": "Follow the Moth",
       "firstClip": "Follow the Moth",
       "nextSection": [],
-      "autoTransition": false
+      "type": ""
     },
     "The Ashwights Attack": {
       "defaultDisplayName": "The Ashwights Attack",
       "firstClip": "The Ashwights Attack",
       "nextSection": [],
-      "autoTransition": false
+      "type": ""
     },
     "Tommy's Haunted Thoughts (reprise)": {
       "defaultDisplayName": "Tommy's Haunted Thoughts (reprise)",
       "firstClip": "Tommy's Haunted Thoughts (reprise)",
       "nextSection": [],
-      "autoTransition": false
+      "type": ""
     }
   }
 }

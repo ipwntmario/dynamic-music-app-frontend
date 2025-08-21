@@ -3,20 +3,22 @@
 // Exposes the same methods you already use.
 
 export class AudioEngine {
-  constructor({ onStatus, onSectionChange, onQueueChange } = {}) {
+  constructor({ onStatus, onSectionChange, onQueueChange, onReady } = {}) {
     this.onStatus = onStatus || (() => {});
     this.onSectionChange = onSectionChange || (() => {});
-    this.onQueueChange = onQueueChange || (() => {}); // NEW
+    this.onQueueChange = onQueueChange || (() => {});
+    this.onReady = onReady || (() => {});         // NEW
+
     this.audioCtx = null;
     this.masterGain = null;
     this.fadeOutEnabled = true;
 
     this.currentSectionName = null;
     this.queuedNextSectionName = null;
-    this.lastTrackName = null;  // NEW
+    this.lastTrackName = null;                    // NEW
 
-    this.activeClips = {};       // { clipName: { source, gainNode, buffer } }
-    this.scheduledTimeouts = []; // [timeoutId]
+    this.activeClips = {};
+    this.scheduledTimeouts = [];
     this.clipData = {};
     this.sectionData = {};
     this.trackData = {};
@@ -54,7 +56,7 @@ export class AudioEngine {
   }
 
   queueSectionTransition(name) {
-    this.queuedNextSectionName = name || null; // pass null to clear
+    this.queuedNextSectionName = name || null;
     this.onQueueChange(this.queuedNextSectionName);   // NEW
   }
 
@@ -62,6 +64,7 @@ export class AudioEngine {
     this.queuedNextSectionName = null;
     this.onQueueChange(null);                         // NEW
   }
+
 
   stopTrack(withFade = true) {
     if (!this.audioCtx) return;
@@ -87,7 +90,7 @@ export class AudioEngine {
   async preloadTrack(trackName) {
     const ctx = this.ensureContext();
     this.stopTrack(false);
-    this.lastTrackName = trackName; // NEW
+    this.lastTrackName = trackName;   // NEW
 
     const track = this.trackData[trackName];
     if (!track || !track.allClips) return;
@@ -124,13 +127,19 @@ export class AudioEngine {
     await this.preloadTrack(this.lastTrackName); // puts us back to “Track 'X' preloaded”
     const track = this.trackData[this.lastTrackName];
     if (track?.firstSection) this.setCurrentSection(track.firstSection);
+    this.onReady();                                    // notify UI “Play” can re-enable
   }
 
   stopAndReload() {
-    const fade = 8.0;              // keep in sync with stopTrack’s fade
-    this.stopTrack(true);
-    const id = setTimeout(() => this.resetToTrackStart(), fade * 1000 + 80);
-    this.scheduledTimeouts.push(id);
+    const fade = 8.0; // keep in sync with stopTrack
+    return new Promise((resolve) => {
+      this.stopTrack(true);
+      const id = setTimeout(async () => {
+        await this.resetToTrackStart();
+        resolve();
+      }, fade * 1000 + 80);
+      this.scheduledTimeouts.push(id);
+    });
   }
 
 
@@ -166,11 +175,18 @@ export class AudioEngine {
     source.buffer = buffer;
 
     const hasNextInClip = Array.isArray(clip.nextClip) && clip.nextClip.length > 0;
+    const sectionOfClip = this.sectionData[this.currentSectionName];
+    const inEndSection = sectionOfClip?.type === "end";
+    const noNextClip = !clip.nextClip || (Array.isArray(clip.nextClip) && clip.nextClip.length === 0);
+    const treatAsTerminal = inEndSection && noNextClip; // terminal in an "end" section
+
+
     const loopEndPoint = (!hasNextInClip)
       ? (clip.loopPoint ?? buffer.duration)
       : (clip.clipEnd ?? buffer.duration);
 
-    source.loop = !hasNextInClip;
+    // If terminal-in-end-section, do NOT loop; we want to play out to clipEnd and finish.
+    source.loop = (!hasNextInClip && !treatAsTerminal) ? true : false;
     source.loopStart = clip.loopStart || 0;
     source.loopEnd  = loopEndPoint;
 
@@ -184,23 +200,21 @@ export class AudioEngine {
     // (its nextClip points to its own name), auto-queue the next section.
     if (this.currentSectionName) {
       const section = this.sectionData[this.currentSectionName];
-      const auto = !!section?.autoTransition;
+      const isAuto = section?.type === "auto";
 
-      // normalize nextSection to array
       const nextSections = Array.isArray(section?.nextSection)
         ? section.nextSection
         : (section?.nextSection ? [section.nextSection] : []);
 
       const hasTarget = nextSections.length > 0;
 
-      // detect self-looping clip
       const selfLoops =
         Array.isArray(clip.nextClip)
           ? clip.nextClip.includes(clipName)
           : clip.nextClip === clipName;
 
-      if (auto && hasTarget && selfLoops && !this.queuedNextSectionName) {
-        const targetSection = nextSections[0]; // choose first if multiple
+      if (isAuto && hasTarget && selfLoops && !this.queuedNextSectionName) {
+        const targetSection = nextSections[0];
         this.queueSectionTransition(targetSection);
       }
     }
@@ -266,30 +280,28 @@ export class AudioEngine {
         if (nextClipName && this.clipData[nextClipName] && this.activeClips[nextClipName]) {
           this.playClip(nextClipName);
         } else {
-          // No transition happened:
           if (source.loop) {
-            // looping clip: keep checking each loop for a late queue
+            // looping: keep watching future loop points (late queue may arrive)
             scheduleLoopCheck();
           } else {
-            // non-looping and no next clip => potential TRUE END if section also has no nextSection
+            // non-looping: terminal?
             const section = this.sectionData[this.currentSectionName];
-            const ns = Array.isArray(section?.nextSection) ? section.nextSection : (section?.nextSection ? [section.nextSection] : []);
-            const isTrueEnd = ns.length === 0; // no nextSection
+            const inEnd = section?.type === "end";
+            const noNext = !clip.nextClip || (Array.isArray(clip.nextClip) && clip.nextClip.length === 0);
+            const isTerminalInEnd = inEnd && noNext;
 
-            if (isTrueEnd) {
+            if (isTerminalInEnd) {
               const clipEndTime = clip.clipEnd ?? buffer.duration;
-              const delta = clipEndTime - (clip.loopPoint ?? buffer.duration); // seconds after loop point
-              // fade to 0 at clipEnd (keep your existing fade line)
+              const delta = clipEndTime - (clip.loopPoint ?? buffer.duration);
               gainNode.gain.setValueAtTime(0, this.audioCtx.currentTime + Math.max(0, delta));
-              // reset to “ready” state a hair after clipEnd
               const id2 = setTimeout(() => this.resetToTrackStart(), Math.max(0, delta) * 1000 + 60);
               this.scheduledTimeouts.push(id2);
-              return; // done
+              return;
             }
           }
         }
 
-        // Still apply the fade to 0 at clipEnd when not a true end case handled above
+        // Default fade at clipEnd when not handled above
         const clipEndTime = clip.clipEnd ?? buffer.duration;
         const delta = clipEndTime - (clip.loopPoint ?? buffer.duration);
         gainNode.gain.setValueAtTime(0, this.audioCtx.currentTime + Math.max(0, delta));
