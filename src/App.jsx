@@ -32,7 +32,7 @@ export default function App() {
       onStatus: setStatus,
       onSectionChange: (name) => setCurrentSectionName(name ?? null),
       onQueueChange: (nameOrNull) => setQueuedSectionName(nameOrNull),
-      onReady: () => setPlayDisabled(false),  // when engine finished resetting
+      onReady: () => { setPlayDisabled(false); setClipProgress(0); },  // when engine finished resetting
     });
   }
   const engine = engineRef.current;
@@ -112,8 +112,8 @@ export default function App() {
     setPlayDisabled(true);
     await engine.stopAndReload();  // resolves after fade+reset
     setPlayDisabled(false);
+    setClipProgress(0);            // <- snap progress bar to 0 after stop completes
   };
-
 
   const handleSelectTrack = async (name) => {
     setSelectedTrack(name);

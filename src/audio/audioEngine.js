@@ -73,8 +73,11 @@ export class AudioEngine {
     if (!this.audioCtx) return;
     this.clearScheduled();
 
+    // ensure progress bar can reset to 0 in the UI
+    this.lastPlayingClipName = null;
+
     Object.values(this.activeClips).forEach(({ source, gainNode }) => {
-      const fade = this.fadeOutSeconds;            // ← use live value
+      const fade = this.fadeOutSeconds; // your configurable fade
       if (withFade && fade > 0) {
         const now = this.audioCtx.currentTime;
         gainNode.gain.cancelScheduledValues(now);
@@ -125,12 +128,18 @@ export class AudioEngine {
 
   async resetToTrackStart() {
     if (!this.lastTrackName) return;
+
+    // ensure progress bar can reset to 0 in the UI
+    this.lastPlayingClipName = null;
+
     this.clearQueuedSection?.();
-    this.stopTrack(false); // hard stop without fade
-    await this.preloadTrack(this.lastTrackName); // puts us back to “Track 'X' preloaded”
+    this.stopTrack(false); // hard stop
+    await this.preloadTrack(this.lastTrackName);
     const track = this.trackData[this.lastTrackName];
     if (track?.firstSection) this.setCurrentSection(track.firstSection);
-    this.onReady();                                    // notify UI “Play” can re-enable
+
+    // tells App that we're fully reset (use this to zero the bar)
+    this.onReady?.();
   }
 
   stopAndReload() {
@@ -144,7 +153,6 @@ export class AudioEngine {
       this.scheduledTimeouts.push(id);
     });
   }
-
 
   playSection(sectionName) {
     const section = this.sectionData[sectionName];
