@@ -4,6 +4,7 @@
       "defaultDisplayName": "BleepBloop (TEST TRACK)",
       "firstSection": "BleepBloop_intro",
       "simple": false,
+      "test": true,
       "allClips": ["BleepBloop_end",
                    "BleepBloop_intro",
                    "BleepBloop_main_a",
@@ -15,6 +16,7 @@
       "defaultDisplayName": "BleepBloop Randomized (TEST TRACK)",
       "firstSection": "BleepBloopRANDOM_intro",
       "simple": false,
+      "test": true,
       "allClips": ["BleepBloopRANDOM_end",
                    "BleepBloopRANDOM_intro",
                    "BleepBloopRANDOM_main_a",
@@ -26,6 +28,7 @@
       "defaultDisplayName": "BleepBloop Testception (TEST TRACK)",
       "firstSection": "BleepBloopTEST_intro",
       "simple": false,
+      "test": true,
       "allClips": ["BleepBloop_end",
                    "BleepBloop_introTEST",
                    "BleepBloop_main_aTEST",
@@ -37,18 +40,21 @@
       "defaultDisplayName": "Follow the Moth",
       "firstSection": "Follow the Moth",
       "simple": true,
+      "test": false,
       "allClips": ["Follow the Moth"]
     },
     "The Ashwights Attack": {
       "defaultDisplayName": "The Ashwights Attack",
       "firstSection": "The Ashwights Attack",
       "simple": true,
+      "test": false,
       "allClips": ["The Ashwights Attack"]
     },
     "Tommy's Haunted Thoughts (reprise)": {
       "defaultDisplayName": "Tommy's Haunted Thoughts (reprise)",
       "firstSection": "Tommy's Haunted Thoughts (reprise)",
       "simple": true,
+      "test": false,
       "allClips": ["Tommy's Haunted Thoughts (reprise)"]
     }
   }

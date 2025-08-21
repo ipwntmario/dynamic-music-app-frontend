@@ -1,13 +1,14 @@
-export default function Transport({ isPlaying, onPlay, onStop, playLabel = "Play", playDisabled = false }) {
+export default function Transport({ isPlaying, onPlay, onStop, playLabel = "Play", playDisabled = false, stopStyle }) {
   return (
-    <div style={{ marginTop: 20 }}>
+    <div style={{ marginTop: 12 }}>
       {!isPlaying ? (
         <button
           onClick={onPlay}
           disabled={playDisabled}
           style={{
-            margin: 5, padding: "10px 20px", cursor: playDisabled ? "not-allowed" : "pointer",
-            opacity: playDisabled ? 0.7 : 1
+            padding: "10px 20px", borderRadius: 8, border: "1px solid #555",
+            cursor: playDisabled ? "not-allowed" : "pointer",
+            opacity: playDisabled ? 0.7 : 1, background: "black", color: "white"
           }}
         >
           {playLabel}
@@ -15,9 +16,12 @@ export default function Transport({ isPlaying, onPlay, onStop, playLabel = "Play
       ) : (
         <button
           onClick={onStop}
-          style={{ margin: 5, padding: "10px 20px", background: "tomato", color: "white", cursor: "pointer" }}
+          style={{
+            padding: "10px 20px", borderRadius: 8, border: "1px solid #555",
+            cursor: "pointer", background: "tomato", color: "white", ...(stopStyle || {})
+          }}
         >
-          Stop
+          ⏹
         </button>
       )}
     </div>

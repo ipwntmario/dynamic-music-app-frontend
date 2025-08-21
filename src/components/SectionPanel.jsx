@@ -1,70 +1,63 @@
-// Renders the current section's "nextSection" options as buttons.
-// Clicking a button toggles it "queued" (green). Clicking the same again cancels.
-// Another click on a different button switches the queued target.
-
-function toArray(x) {
-  if (!x) return [];
-  return Array.isArray(x) ? x : [x];
-}
+function toArray(x) { return Array.isArray(x) ? x : (x ? [x] : []); }
 
 export default function SectionPanel({
   sections,
   currentSectionName,
   queuedSectionName,
-  autoLockedTargets = [],              // NEW
-  onToggleQueuedSection, // (sectionName|null) => void
+  autoLockedTargets = [],
+  onToggleQueuedSection,
+  largeButtons = false,
 }) {
   const current = sections[currentSectionName];
   const nextSections = toArray(current?.nextSection);
-
   if (!current || nextSections.length === 0) return null;
 
   return (
-    <div style={{ marginTop: 20 }}>
-      <div style={{ marginBottom: 8, fontWeight: 600 }}>
-        Transitions from: {current.defaultDisplayName ?? currentSectionName}
-      </div>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {nextSections.map((name) => {
-          const isQueued = queuedSectionName === name;
-          const isAutoLocked = autoLockedTargets.includes(name);
-          const disabled = isAutoLocked;
+    <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+      {nextSections.map((name) => {
+        const isQueued = queuedSectionName === name;
+        const isAutoLocked = autoLockedTargets.includes(name);
+        const targetSection = sections[name] || {};
+        const isEnd = targetSection?.type === "end";
 
-          // colors:
-          // - normal queued: green
-          // - auto locked queued: grey-green
-          // - auto locked not queued: grey
-          const bg = isQueued
-            ? (isAutoLocked ? "#6b8e23" /* greyish green */ : "green")
-            : (isAutoLocked ? "#e0e0e0" /* grey */ : "white");
-          const color = isQueued || isAutoLocked ? "white" : "black";
-          const border = isAutoLocked ? "1px solid #bdbdbd" : "1px solid #ccc";
+        // Base styles
+        let background = "black";
+        let color = "white";
+        let border = "1px solid #555";
+        let opacity = 1;
 
-          return (
-            <button
-              key={name}
-              disabled={disabled}
-              onClick={() => {
-                if (disabled) return;
-                if (isQueued) onToggleQueuedSection(null); // cancel
-                else onToggleQueuedSection(name);          // set new queued
-              }}
-              style={{
-                padding: "8px 14px",
-                borderRadius: 8,
-                border,
-                cursor: disabled ? "not-allowed" : "pointer",
-                background: bg,
-                color,
-                opacity: disabled && !isQueued ? 0.8 : 1,
-              }}
-              title={sections[name]?.defaultDisplayName ?? name}
-            >
-              {sections[name]?.defaultDisplayName ?? name}
-            </button>
-          );
-        })}
-      </div>
+        if (isEnd) background = "#ff6347";                                        // red for end sections
+        if (isQueued && !isAutoLocked) background = "#228b22";                    // green when queued
+        if (isAutoLocked && !isQueued) { background = "#696969"; opacity = 0.9; } // disabled-grey
+        if (isAutoLocked && isQueued) { background = "#4e694e"; opacity = 0.9; }  // disabled and queued grey-green
+
+        const sizeStyle = largeButtons
+          ? { padding: "10px 20px", fontSize: 16 }
+          : { padding: "8px 14px", fontSize: 14 };
+
+        return (
+          <button
+            key={name}
+            disabled={isAutoLocked}
+            onClick={() => {
+              if (isAutoLocked) return;
+              if (isQueued) onToggleQueuedSection(null);
+              else onToggleQueuedSection(name);
+            }}
+            style={{
+              ...sizeStyle,
+              borderRadius: 8,
+              border,
+              cursor: isAutoLocked ? "not-allowed" : "pointer",
+              background, color, opacity,
+              minWidth: 120
+            }}
+            title={sections[name]?.defaultDisplayName ?? name}
+          >
+            {sections[name]?.defaultDisplayName ?? name}
+          </button>
+        );
+      })}
     </div>
   );
 }

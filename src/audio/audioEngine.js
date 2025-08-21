@@ -11,13 +11,16 @@ export class AudioEngine {
 
     this.audioCtx = null;
     this.masterGain = null;
-    this.fadeOutSeconds = 4;                        // ← NEW default
+    this.fadeOutSeconds = 4;
+
+    this.lastTrackName = null;
 
     this.currentSectionName = null;
     this.queuedNextSectionName = null;
-    this.lastTrackName = null;
 
     this.activeClips = {};
+    this.lastPlayingClipName = null;
+
     this.scheduledTimeouts = [];
     this.clipData = {};
     this.sectionData = {};
@@ -65,7 +68,6 @@ export class AudioEngine {
     this.queuedNextSectionName = null;
     this.onQueueChange(null);                         // NEW
   }
-
 
   stopTrack(withFade = true) {
     if (!this.audioCtx) return;
@@ -230,6 +232,7 @@ export class AudioEngine {
     gainNode.gain.linearRampToValueAtTime(1.0, now + 0.2);
 
     this.onStatus(`Playing: ${clipName}`);
+    this.lastPlayingClipName = clipName;
 
     // Single unified scheduler:
 
@@ -314,6 +317,24 @@ export class AudioEngine {
 
     scheduleLoopCheck();
 
+  }
+
+  // Used by the clip progress bar
+  getPlaybackInfo() {
+    const name = this.lastPlayingClipName;
+    if (!name) return null;
+    const entry = this.activeClips[name];
+    if (!entry) return null;
+    const clip = this.clipData[name] || {};
+    const { buffer, startedAt, offsetAtStart } = entry;
+    if (!this.audioCtx || !buffer) return null;
+
+    const now = this.audioCtx.currentTime;
+    const loopPoint = clip.loopPoint ?? buffer.duration;
+    const elapsed = Math.max(0, now - (startedAt ?? 0));
+    const pos = (offsetAtStart ?? 0) + elapsed;        // seconds since clip start position
+    const norm = Math.max(0, Math.min(1, loopPoint > 0 ? pos / loopPoint : 0));
+    return { clipName: name, positionSec: pos, loopPointSec: loopPoint, progress01: norm };
   }
 
   // For future net-sync: schedule by *audio time*
