@@ -5,6 +5,7 @@ import TrackSelector from "./components/TrackSelector";
 import Transport from "./components/Transport";
 import SectionPanel from "./components/SectionPanel";
 import StatusBar from "./components/StatusBar";
+import appIcon from "./assets/icons/icon1.png";
 
 export default function App() {
   const { clips, sections, tracks, loading } = useMusicData();
@@ -22,7 +23,7 @@ export default function App() {
 
   const [playDisabled, setPlayDisabled] = useState(false);
 
-  const [statusOpen, setStatusOpen] = useState(true);   // collapsible status
+  const [statusOpen, setStatusOpen] = useState(false);  // collapsible status
   const [clipProgress, setClipProgress] = useState(0);  // 0..1 visual bar
 
   // Volume settings
@@ -172,12 +173,18 @@ export default function App() {
         </button>
       </div>
 
-      {/* Title */}
-      <h1 style={{ marginTop: 0, marginBottom: 16 }}>Wizamp</h1>
+      {/* Title with icon */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 0, marginBottom: 16 }}>
+        <img
+          src={appIcon}
+          alt="Wizamp icon"
+          style={{ width: 64, height: 64, borderRadius: 6, objectFit: "cover" }}
+        />
+        <h1 style={{ margin: 0 }}>Wizamp</h1>
+      </div>
 
       {/* Track Controls */}
       <section style={{ marginBottom: 16 }}>
-        <div style={{ fontWeight: 600, marginBottom: 8 }}>Track:</div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <TrackSelector
             tracks={tracks}
@@ -191,8 +198,18 @@ export default function App() {
               <button
                 aria-label="Track volume"
                 onClick={() => setTrackVolUIOpen(o => !o)}
-                style={{ background: "transparent", border: "1px solid #555", color: "white", borderRadius: 8, padding: "6px 10px", cursor: "pointer" }}
-                title="Track volume (shared)"
+                style={{
+                  background: "transparent",
+                  border: "1px solid #555",
+                  color: "white",
+                  borderRadius: 8,
+                  width: 36, height: 36,                 // square 🔲
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer"
+                }}
+                title="Track volume (set for all players)"
               >
                 🔊
               </button>
@@ -205,16 +222,20 @@ export default function App() {
                     padding: 10, minWidth: 220, zIndex: 2
                   }}
                 >
-                  <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 6 }}>Track volume (shared)</div>
+                  <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 6 }}>Track volume (set for all players)</div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ width: 22, textAlign: "right" }}>0</span>
+                    <div style={{ width: 36, textAlign: "right", opacity: 0.9 }}>
+                      {Math.round(trackVolume * 100)}
+                    </div>
                     <input
-                      type="range" min={0} max={1} step={0.01}
-                      value={trackVolume}
-                      onChange={(e) => setTrackVolume(Number(e.target.value))}
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={Math.round(trackVolume * 100)}
+                      onChange={(e) => setTrackVolume(Number(e.target.value) / 100)}
                       style={{ flex: 1 }}
                     />
-                    <span style={{ width: 22, textAlign: "left" }}>1</span>
                   </div>
                 </div>
               )}
@@ -226,8 +247,8 @@ export default function App() {
               isPlaying={isPlaying}
               onPlay={handlePlay}
               onStop={handleStop}
-              playLabel="Play"
               playDisabled={playDisabled}
+              controlSize={36}                                   // match 🔊 height
               stopStyle={isComplexTrack ? { background: "#400000" } : undefined}
             />
           )}
@@ -268,8 +289,10 @@ export default function App() {
         <button
           onClick={() => setStatusOpen(s => !s)}
           style={{ background: "transparent", color: "white", border: "1px solid #555", borderRadius: 6, padding: "4px 10px", cursor: "pointer", marginBottom: 8 }}
+          aria-label={statusOpen ? "Collapse" : "Expand"}
+          title={statusOpen ? "Collapse" : "Expand"}
         >
-          {statusOpen ? "−" : "+"} Status
+          {statusOpen ? "−" : "+"}
         </button>
         {statusOpen && (
           <div>
@@ -322,18 +345,22 @@ export default function App() {
         <div style={{ position: "fixed", right: 20, bottom: 20, background: "#2a2a2a", color: "white",
                       border: "1px solid #555", borderRadius: 10, padding: "8px 12px", zIndex: 1 }}>
           <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 4, textAlign: "center" }}>
-            Your volume
+          {/* could put text here */}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ width: 22, textAlign: "right" }}>0</span>
+            <div style={{ width: 36, textAlign: "right", opacity: 0.9 }}>
+              {Math.round(userVolume * 100)}
+            </div>
             <input
-              type="range" min={0} max={1} step={0.01}
-              value={userVolume}
-              onChange={(e) => setUserVolume(Number(e.target.value))}
+              type="range"
+              min={0}
+              max={100}
+              step={1}
+              value={Math.round(userVolume * 100)}
+              onChange={(e) => setUserVolume(Number(e.target.value) / 100)}
               style={{ width: 180 }}
               title="This affects only your device"
             />
-            <span style={{ width: 22, textAlign: "left" }}>1</span>
           </div>
         </div>
     </div>

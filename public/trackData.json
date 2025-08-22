@@ -29,12 +29,12 @@
       "firstSection": "BleepBloopTEST_intro",
       "simple": false,
       "test": true,
-      "allClips": ["BleepBloop_end",
-                   "BleepBloop_introTEST",
-                   "BleepBloop_main_aTEST",
-                   "BleepBloop_main_b",
-                   "BleepBloop_main_c",
-                   "BleepBloop_main_d"]
+      "allClips": ["BleepBloopTEST_end",
+                   "BleepBloopTEST_intro",
+                   "BleepBloopTEST_main_a",
+                   "BleepBloopTEST_main_b",
+                   "BleepBloopTEST_main_c",
+                   "BleepBloopTEST_main_d"]
     },
     "Follow the Moth": {
       "defaultDisplayName": "Follow the Moth",
