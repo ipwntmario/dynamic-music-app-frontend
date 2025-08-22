@@ -1,96 +1,160 @@
-import fs from "fs";
-import path from "path";
-import { parseFile } from "music-metadata";
-import { execSync } from "child_process";
+#!/usr/bin/env node
+// extract-durations.mjs
+// Append-only clipData updater + WAV→OGG converter.
+//
+// Behavior:
+// - Reads ./clipData.json { "clips": { ... } } if present.
+// - Scans ./audio for *.wav not starting with "_".
+// - For each baseName:
+//     - If clips[baseName] exists AND ./audio/<baseName>.ogg exists => SKIP
+//     - If clips[baseName] exists AND .ogg missing => CONVERT ONLY (no JSON change)
+//     - If clips[baseName] missing => CONVERT (if needed) + ADD entry:
+//           file: "<baseName>.ogg"
+//           loopPoint: duration(_<baseName>.wav) if exists, else duration(<baseName>.wav)
+//           clipEnd: duration(<baseName>.wav)
+// - Never deletes/overwrites existing clip keys; no loopStart on new entries.
 
-const inputDir = "./public/audio";
-const outputFile = "./public/clipData.json";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import fs from "node:fs/promises";
+import fssync from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-async function extractDurations() {
-  const files = fs.readdirSync(inputDir);
-  const clips = {};
+const pExecFile = promisify(execFile);
 
-  for (const file of files) {
-    const ext = path.extname(file).toLowerCase();
-    const baseName = path.basename(file, ext);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-    // Skip non-wavs
-    if (ext !== ".wav") continue;
+// ---- CONFIG (adjust if your layout differs) ----
+const AUDIO_DIR = path.resolve(__dirname, "audio");
+const CLIPDATA_PATH = path.resolve(__dirname, "clipData.json");
+// -----------------------------------------------
 
-    // Skip files that start with "_" (used only for loop reference)
-    if (baseName.startsWith("_")) {
-      console.log(`Skipping helper file: ${file}`);
-      continue;
-    }
-
-    const filePath = path.join(inputDir, file);
-    console.log(`Processing file: ${filePath}`);
-
-    // 1. Check for matching "_" prefixed file (for loop reference)
-    const refFile = `_${baseName}${ext}`;
-    const refPath = path.join(inputDir, refFile);
-    const loopSourcePath = fs.existsSync(refPath) ? refPath : filePath;
-    if (loopSourcePath === refPath) {
-      console.log(` → Using loop reference file: ${refFile}`);
-    }
-
-    // 2. Use ffprobe to get exact duration
-    let exactDuration = 0.0;
-    try {
-      const durationStr = execSync(
-        `ffprobe -i "${loopSourcePath}" -show_entries format=duration -v quiet -of csv="p=0"`
-      )
-        .toString()
-        .trim();
-      exactDuration = parseFloat(durationStr);
-    } catch (err) {
-      console.error(`Failed to probe ${loopSourcePath}:`, err.message);
-      continue;
-    }
-
-    // 3. Extract loop points from smpl chunk if available
-    const metadata = await parseFile(loopSourcePath);
-    let loopStart = 0.0;
-    let loopEnd = exactDuration; // default to exact duration
-
-    if (metadata.native["RIFF"]) {
-      const smpl = metadata.native["RIFF"].find(tag => tag.id === "smpl");
-      if (smpl && smpl.value?.loops?.length > 0) {
-        loopStart = smpl.value.loops[0].start / metadata.format.sampleRate;
-        loopEnd = smpl.value.loops[0].end / metadata.format.sampleRate;
-      }
-    }
-
-    // 4. Convert .wav → .ogg using ffmpeg
-    const oggPath = path.join(inputDir, `${baseName}.ogg`);
-    try {
-      execSync(
-        `ffmpeg -y -i "${filePath}" -c:a libvorbis -qscale:a 5 -avoid_negative_ts make_zero "${oggPath}"`,
-        { stdio: "ignore" }
-      );
-      console.log(` → Converted to OGG: ${oggPath}`);
-    } catch (err) {
-      console.error(`Failed to convert ${filePath} to OGG:`, err);
-      continue;
-    }
-
-    // 5. Add to clipData
-    clips[baseName] = {
-      file: `${baseName}.ogg`,
-      loopStart: parseFloat(loopStart.toFixed(6)), // high precision
-      loopEnd: parseFloat(loopEnd.toFixed(6)),
-      nextClip: []
-    };
-
-    console.log(
-      ` → Clip added: ${baseName}.ogg (loopStart: ${loopStart.toFixed(
-        6
-      )}, loopEnd: ${loopEnd.toFixed(6)})`
-    );
+async function ensureFileJSON(filepath, fallbackValue) {
+  try {
+    const buf = await fs.readFile(filepath, "utf8");
+    const json = JSON.parse(buf);
+    return json;
+  } catch (err) {
+    if (err.code === "ENOENT") return fallbackValue;
+    console.warn(`⚠️  Could not parse ${path.basename(filepath)}; starting fresh for safety.`);
+    return fallbackValue;
   }
-
-  fs.writeFileSync(outputFile, JSON.stringify({ clips }, null, 2));
-  console.log(`✅ Clip data written to ${outputFile}`);
 }
 
-extractDurations().catch(console.error);
+function secondsFromProbeOut(str) {
+  const n = Number(String(str).trim());
+  return Number.isFinite(n) ? n : 0;
+}
+
+async function ffprobeDurationSeconds(filePath) {
+  // Prints only duration number
+  const { stdout } = await pExecFile("ffprobe", [
+    "-v", "error",
+    "-show_entries", "format=duration",
+    "-of", "default=noprint_wrappers=1:nokey=1",
+    filePath
+  ], { windowsHide: true });
+  return secondsFromProbeOut(stdout);
+}
+
+async function convertWavToOgg(inputWav, outputOgg) {
+  // Skip if already exists
+  if (fssync.existsSync(outputOgg)) return false;
+  // Simple opus conversion; tweak bitrate if you want
+  await pExecFile("ffmpeg", [
+    "-y",
+    "-i", inputWav,
+    "-c:a", "libopus",
+    "-b:a", "160k",
+    outputOgg
+  ], { windowsHide: true });
+  return true;
+}
+
+async function main() {
+  // 1) Load existing clipData (append-only)
+  const existing = await ensureFileJSON(CLIPDATA_PATH, { clips: {} });
+  if (!existing.clips || typeof existing.clips !== "object") {
+    existing.clips = {};
+  }
+  const clips = existing.clips;
+
+  // 2) Enumerate main WAVs (exclude files starting with "_")
+  const entries = await fs.readdir(AUDIO_DIR, { withFileTypes: true });
+  const wavs = entries
+    .filter(d => d.isFile() && d.name.toLowerCase().endsWith(".wav") && !d.name.startsWith("_"))
+    .map(d => d.name);
+
+  const added = [];
+  const convertedOnly = [];
+  const skipped = [];
+
+  for (const wavName of wavs) {
+    const base = wavName.slice(0, -4); // strip .wav
+    const wavPath = path.join(AUDIO_DIR, wavName);
+    const oggName = `${base}.ogg`;
+    const oggPath = path.join(AUDIO_DIR, oggName);
+
+    const helperWavName = `_${base}.wav`;
+    const helperWavPath = path.join(AUDIO_DIR, helperWavName);
+    const hasHelper = fssync.existsSync(helperWavPath);
+
+    const existsInJSON = Object.prototype.hasOwnProperty.call(clips, base);
+    const oggExists = fssync.existsSync(oggPath);
+
+    // Case A: entry exists + ogg exists => skip entirely
+    if (existsInJSON && oggExists) {
+      skipped.push(base);
+      continue;
+    }
+
+    // Ensure there is an OGG (convert if missing)
+    if (!oggExists) {
+      await convertWavToOgg(wavPath, oggPath);
+    }
+
+    // Case B: entry exists but ogg was missing => we converted; don't touch JSON
+    if (existsInJSON) {
+      convertedOnly.push(base);
+      continue;
+    }
+
+    // Case C: new entry => probe durations and add
+    // clipEnd: duration of main WAV
+    const clipEndSec = await ffprobeDurationSeconds(wavPath);
+
+    // loopPoint: if helper (_<name>.wav) exists, use its duration; else main duration
+    let loopPointSec = clipEndSec;
+    if (hasHelper) {
+      loopPointSec = await ffprobeDurationSeconds(helperWavPath);
+    }
+
+    // Build new clip entry (append-only; omit loopStart)
+    clips[base] = {
+      file: oggName,
+      loopPoint: loopPointSec,
+      clipEnd: clipEndSec
+      // (nextClip, type, etc. can be edited by hand or other tools; we don't touch them)
+    };
+
+    added.push(base);
+  }
+
+  // 3) Write back clipData.json (pretty, append-only changes)
+  //    We do not remove or rename any existing keys; we just added new ones.
+  const pretty = JSON.stringify({ clips }, null, 2) + "\n";
+  await fs.writeFile(CLIPDATA_PATH, pretty, "utf8");
+
+  // 4) Report
+  console.log(`\nDone.`);
+  console.log(`  Added clips:        ${added.length ? added.join(", ") : "(none)"}`);
+  console.log(`  Converted only:     ${convertedOnly.length ? convertedOnly.join(", ") : "(none)"}`);
+  console.log(`  Skipped (up-to-date): ${skipped.length ? skipped.join(", ") : "(none)"}\n`);
+}
+
+main().catch(err => {
+  console.error("Error:", err);
+  process.exit(1);
+});

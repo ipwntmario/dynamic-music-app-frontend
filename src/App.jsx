@@ -5,10 +5,20 @@ import TrackSelector from "./components/TrackSelector";
 import Transport from "./components/Transport";
 import SectionPanel from "./components/SectionPanel";
 import StatusBar from "./components/StatusBar";
-import appIcon from "./assets/icons/icon1.png";
+
+// Auto-import all PNGs in /assets/icons at build time
+const _iconModules = import.meta.glob("./assets/icons/*.png", { eager: true });
+const icons = Object.fromEntries(
+  Object.entries(_iconModules).map(([path, mod]) => [
+    path.split("/").pop(),            // "icon1.png"
+    mod.default ?? mod,               // the URL
+  ])
+);
+const allIconNames = Object.keys(icons).sort();
 
 export default function App() {
   const { clips, sections, tracks, loading } = useMusicData();
+  const [appIconName, setAppIconName] = useState(() => allIconNames[0] ?? "");
 
   const [status, setStatus] = useState("Idle");
   const [selectedTrack, setSelectedTrack] = useState(null);
@@ -30,7 +40,7 @@ export default function App() {
   const [trackVolUIOpen, setTrackVolUIOpen] = useState(false);
   const [trackVolume, setTrackVolume] = useState(1); // 0..1
   const [userVolume, setUserVolume] = useState(1);   // 0..1 (local)
-
+  const [userMuted, setUserMuted] = useState(false);
 
   // Create engine once
   const engineRef = useRef(null);
@@ -145,13 +155,29 @@ export default function App() {
     await engine.preloadTrack(name, { trackVolume: savedVol });
   };
 
-  useEffect(() => { engine.setUserVolume?.(userVolume); }, [engine, userVolume]);
+  // Set user volume
+  useEffect(() => {
+    engine.setUserVolume?.(userMuted ? 0 : userVolume);
+  }, [engine, userVolume, userMuted]);
+
+  // Set track volume
   useEffect(() => {
     // whenever trackVolume changes for the selected track, apply + persist
     if (!selectedTrack) return;
     engine.setTrackVolume?.(trackVolume);
     saveTrackVolume(selectedTrack, trackVolume);
   }, [engine, selectedTrack, trackVolume]);
+
+  // Persist app icon
+  useEffect(() => {
+    const saved = localStorage.getItem("wizamp_appIcon");
+    if (saved && icons[saved]) setAppIconName(saved);
+    else if (allIconNames.length && !saved) setAppIconName(allIconNames[0]);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("wizamp_appIcon", appIconName);
+  }, [appIconName]);
 
   return (
     <div style={{ fontFamily: "sans-serif", padding: 20 }}>
@@ -176,7 +202,7 @@ export default function App() {
       {/* Title with icon */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 0, marginBottom: 16 }}>
         <img
-          src={appIcon}
+          src={icons[appIconName] || icons[allIconNames[0]]}
           alt="Wizamp icon"
           style={{ width: 64, height: 64, borderRadius: 6, objectFit: "cover" }}
         />
@@ -337,32 +363,82 @@ export default function App() {
               </div>
               <div style={{ marginTop: 12, fontSize: 12, color: "#bbb" }}>(0 = instantaneous, max 30s)</div>
             </div>
+            <div>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <span>App icon:</span>
+                <select
+                  value={appIconName}
+                  onChange={(e) => setAppIconName(e.target.value)}
+                  style={{ padding: "4px", borderRadius: 6 }}
+                >
+                  {allIconNames.map((file) => (
+                    <option key={file} value={file}>
+                      {file}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
           </div>
         </div>
       )}
 
       {/* Per-user volume (local) */}
-        <div style={{ position: "fixed", right: 20, bottom: 20, background: "#2a2a2a", color: "white",
-                      border: "1px solid #555", borderRadius: 10, padding: "8px 12px", zIndex: 1 }}>
-          <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 4, textAlign: "center" }}>
-          {/* could put text here */}
+      <div
+        style={{
+          position: "fixed",
+          right: 20,
+          bottom: 20,
+          background: "#2a2a2a",
+          color: "white",
+          border: "1px solid #555",
+          borderRadius: 10,
+          padding: "8px 8px",
+          zIndex: 1
+        }}
+        title="This affects only your device"
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 36, textAlign: "right", opacity: 0.9 }}>
+            {Math.round(userVolume * 100)}
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 36, textAlign: "right", opacity: 0.9 }}>
-              {Math.round(userVolume * 100)}
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              step={1}
-              value={Math.round(userVolume * 100)}
-              onChange={(e) => setUserVolume(Number(e.target.value) / 100)}
-              style={{ width: 180 }}
-              title="This affects only your device"
-            />
-          </div>
+
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={1}
+            value={Math.round(userVolume * 100)}
+            onChange={(e) => setUserVolume(Number(e.target.value) / 100)}
+            style={{
+              width: 180,
+              // grey-out while muted (still adjustable)
+              filter: userMuted ? "grayscale(1)" : "none",
+              opacity: userMuted ? 0.6 : 1
+            }}
+            aria-label="Your volume"
+          />
+
+          <button
+            onClick={() => setUserMuted(m => !m)}
+            aria-label={userMuted ? "Unmute" : "Mute"}
+            title={userMuted ? "Unmute" : "Mute"}
+            style={{
+              width: 36,
+              height: 36,
+              background: "transparent",
+              color: "white",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              opacity: userMuted ? 0.9 : 1
+            }}
+          >
+            {userMuted ? "🔇" : "🔊"}
+          </button>
         </div>
+      </div>
     </div>
   );
 }
