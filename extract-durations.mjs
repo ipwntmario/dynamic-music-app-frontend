@@ -27,8 +27,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // ---- CONFIG (adjust if your layout differs) ----
-const AUDIO_DIR = path.resolve(__dirname, "audio");
-const CLIPDATA_PATH = path.resolve(__dirname, "clipData.json");
+const AUDIO_DIR = path.resolve(__dirname, "./public/audio");
+const CLIPDATA_PATH = path.resolve(__dirname, "./public/clipData.json");
 // -----------------------------------------------
 
 async function ensureFileJSON(filepath, fallbackValue) {
@@ -135,7 +135,8 @@ async function main() {
     clips[base] = {
       file: oggName,
       loopPoint: loopPointSec,
-      clipEnd: clipEndSec
+      clipEnd: clipEndSec,
+      nextClip: []
       // (nextClip, type, etc. can be edited by hand or other tools; we don't touch them)
     };
 

@@ -5,43 +5,52 @@
       "firstSection": "BleepBloop_intro",
       "simple": false,
       "test": true,
-      "allClips": ["BleepBloop_end",
-                   "BleepBloop_intro",
-                   "BleepBloop_main_a",
-                   "BleepBloop_main_b",
-                   "BleepBloop_main_c",
-                   "BleepBloop_main_d"]
+      "allClips": [
+        "BleepBloop_intro",
+        "BleepBloop_main_a",
+        "BleepBloop_main_b",
+        "BleepBloop_main_c",
+        "BleepBloop_main_d",
+        "BleepBloop_keychange_a",
+        "BleepBloop_keychange_b",
+        "BleepBloop_keychange_c",
+        "BleepBloop_keychange_d",
+        "BleepBloop_end",
+        "BleepBloop_endInKeychange"
+      ]
     },
     "BleepBloopRANDOM": {
       "defaultDisplayName": "BleepBloop Randomized (TEST TRACK)",
       "firstSection": "BleepBloopRANDOM_intro",
       "simple": false,
       "test": true,
-      "allClips": ["BleepBloopRANDOM_end",
-                   "BleepBloopRANDOM_intro",
-                   "BleepBloopRANDOM_main_a",
-                   "BleepBloopRANDOM_main_b",
-                   "BleepBloopRANDOM_main_c",
-                   "BleepBloopRANDOM_main_d"]
+      "allClips": [
+        "BleepBloopRANDOM_intro",
+        "BleepBloopRANDOM_main_a",
+        "BleepBloopRANDOM_main_b",
+        "BleepBloopRANDOM_main_c",
+        "BleepBloopRANDOM_main_d",
+        "BleepBloopRANDOM_keychange_a",
+        "BleepBloopRANDOM_keychange_b",
+        "BleepBloopRANDOM_keychange_c",
+        "BleepBloopRANDOM_keychange_d",
+        "BleepBloopRANDOM_end",
+        "BleepBloopRANDOM_endInKeychange"
+      ]
     },
     "BleepBloopTestyMcTestface": {
       "defaultDisplayName": "BleepBloop Testception (TEST TRACK)",
       "firstSection": "BleepBloopTEST_intro",
       "simple": false,
       "test": true,
-      "allClips": ["BleepBloopTEST_end",
-                   "BleepBloopTEST_intro",
-                   "BleepBloopTEST_main_a",
-                   "BleepBloopTEST_main_b",
-                   "BleepBloopTEST_main_c",
-                   "BleepBloopTEST_main_d"]
-    },
-    "Follow the Moth": {
-      "defaultDisplayName": "Follow the Moth",
-      "firstSection": "Follow the Moth",
-      "simple": true,
-      "test": false,
-      "allClips": ["Follow the Moth"]
+      "allClips": [
+        "BleepBloopTEST_end",
+        "BleepBloopTEST_intro",
+        "BleepBloopTEST_main_a",
+        "BleepBloopTEST_main_b",
+        "BleepBloopTEST_main_c",
+        "BleepBloopTEST_main_d"
+      ]
     },
     "The Ashwights Attack": {
       "defaultDisplayName": "The Ashwights Attack",
@@ -49,6 +58,41 @@
       "simple": true,
       "test": false,
       "allClips": ["The Ashwights Attack"]
+    },
+    "A Hearth of Mysteries": {
+      "defaultDisplayName": "A Hearth of Mysteries",
+      "firstSection": "A Hearth of Mysteries",
+      "simple": true,
+      "test": false,
+      "allClips": ["A Hearth of Mysteries"]
+    },
+    "Lena's Sight": {
+      "defaultDisplayName": "Lena's Sight",
+      "firstSection": "Lena's Sight",
+      "simple": true,
+      "test": false,
+      "allClips": ["Lena's Sight"]
+    },
+    "One Who Sees": {
+      "defaultDisplayName": "One Who Sees",
+      "firstSection": "One Who Sees",
+      "simple": true,
+      "test": false,
+      "allClips": ["One Who Sees"]
+    },
+    "The Tower Card": {
+      "defaultDisplayName": "The Tower Card",
+      "firstSection": "The Tower Card",
+      "simple": true,
+      "test": false,
+      "allClips": ["The Tower Card"]
+    },
+    "Follow the Moth": {
+      "defaultDisplayName": "Follow the Moth",
+      "firstSection": "Follow the Moth",
+      "simple": true,
+      "test": false,
+      "allClips": ["Follow the Moth"]
     },
     "Tommy's Haunted Thoughts (reprise)": {
       "defaultDisplayName": "Tommy's Haunted Thoughts (reprise)",
