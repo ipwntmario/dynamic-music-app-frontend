@@ -1,5 +1,13 @@
 {
   "clips": {
+    "Intro": {
+      "file": "Intro.ogg",
+      "loopPoint": 4.615397,
+      "clipEnd": 11.538481,
+      "nextClip": [
+        "Intro"
+      ]
+    },
     "Main_a": {
       "file": "Main_a.ogg",
       "loopPoint": 9.230771,
@@ -50,7 +58,7 @@
         "Keychange_d"
       ]
     },
-    "BleepBloopRANDOM_keychange_b": {
+    "Keychange_b": {
       "file": "Keychange_b.ogg",
       "loopPoint": 9.230771,
       "clipEnd": 13.846168,

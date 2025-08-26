@@ -27,7 +27,7 @@ export default function SectionPanel({
         let opacity = 1;
 
         if (isEnd) background = "#400000";                                        // red for end sections
-        if (isQueued && !isAutoLocked) background = "#228b22";                    // green when queued
+        if (isQueued && !isAutoLocked) background = "#0aa";                    // green when queued
         if (isAutoLocked && !isQueued) { background = "#696969"; opacity = 0.9; } // disabled-grey
         if (isAutoLocked && isQueued) { background = "#4e694e"; opacity = 0.9; }  // disabled and queued grey-green
 
