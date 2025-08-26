@@ -1,0 +1,96 @@
+{
+  "clips": {
+    "BleepBloopRANDOM_main_a": {
+      "file": "BleepBloop_main_a.ogg",
+      "loopPoint": 9.230771,
+      "clipEnd": 16.153855,
+      "nextClip": [
+        "BleepBloopRANDOM_main_b",
+        "BleepBloopRANDOM_main_c",
+        "BleepBloopRANDOM_main_d"
+      ]
+    },
+    "BleepBloopRANDOM_main_b": {
+      "file": "BleepBloop_main_b.ogg",
+      "loopPoint": 9.230771,
+      "clipEnd": 16.153855,
+      "nextClip": [
+        "BleepBloopRANDOM_main_a",
+        "BleepBloopRANDOM_main_c",
+        "BleepBloopRANDOM_main_d"
+      ]
+    },
+    "BleepBloopRANDOM_main_c": {
+      "file": "BleepBloop_main_c.ogg",
+      "loopPoint": 9.230771,
+      "clipEnd": 16.153855,
+      "nextClip": [
+        "BleepBloopRANDOM_main_a",
+        "BleepBloopRANDOM_main_b",
+        "BleepBloopRANDOM_main_d"
+      ]
+    },
+    "BleepBloopRANDOM_main_d": {
+      "file": "BleepBloop_main_d.ogg",
+      "loopPoint": 9.230771,
+      "clipEnd": 16.153855,
+      "nextClip": [
+        "BleepBloopRANDOM_main_a",
+        "BleepBloopRANDOM_main_b",
+        "BleepBloopRANDOM_main_c"
+      ]
+    },
+    "BleepBloopRANDOM_keychange_a": {
+      "file": "BleepBloop_keychange_a.ogg",
+      "loopPoint": 9.230771,
+      "clipEnd": 13.846168,
+      "nextClip": [
+        "BleepBloopRANDOM_keychange_b",
+        "BleepBloopRANDOM_keychange_c",
+        "BleepBloopRANDOM_keychange_d"
+      ]
+    },
+    "BleepBloopRANDOM_keychange_b": {
+      "file": "BleepBloop_keychange_b.ogg",
+      "loopPoint": 9.230771,
+      "clipEnd": 13.846168,
+      "nextClip": [
+        "BleepBloopRANDOM_keychange_a",
+        "BleepBloopRANDOM_keychange_c",
+        "BleepBloopRANDOM_keychange_d"
+      ]
+    },
+    "BleepBloopRANDOM_keychange_c": {
+      "file": "BleepBloop_keychange_c.ogg",
+      "loopPoint": 9.230771,
+      "clipEnd": 13.846168,
+      "nextClip": [
+        "BleepBloopRANDOM_keychange_a",
+        "BleepBloopRANDOM_keychange_b",
+        "BleepBloopRANDOM_keychange_d"
+      ]
+    },
+    "BleepBloopRANDOM_keychange_d": {
+      "file": "BleepBloop_keychange_d.ogg",
+      "loopPoint": 9.230771,
+      "clipEnd": 13.846168,
+      "nextClip": [
+        "BleepBloopRANDOM_keychange_a",
+        "BleepBloopRANDOM_keychange_b",
+        "BleepBloopRANDOM_keychange_c"
+      ]
+    },
+    "BleepBloopRANDOM_end": {
+      "file": "BleepBloop_end.ogg",
+      "loopPoint": 16.153855,
+      "clipEnd": 16.153855,
+      "nextClip": []
+    },
+    "BleepBloopRANDOM_endInKeychange": {
+      "file": "BleepBloop_endInKeychange.ogg",
+      "loopPoint": 13.846168,
+      "clipEnd": 13.846168,
+      "nextClip": []
+    }
+  }
+}

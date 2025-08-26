@@ -1,3 +1,14 @@
+/**
+ * Wizamp
+ * A Dynamic Music Web Application
+ *
+ * Note: The majority of this code was written by ChatGPT (models 4o and 5), but the overall function and design was
+ * handled by me, Dylan Travers. It may not be an example of raw coding knowledge, but it demontrates my ability to
+ * concieve of a useful applciation, communicate goals, and work until those goals are achieved. My attention to detail
+ * should be evident, as well as my careful consideration of what features to work on when so aspects of the project
+ * could still be tested, as AI still has its flaws and oversights.
+ */
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AudioEngine } from "./audio/audioEngine";
 import { useMusicData } from "./data/useMusicData";
@@ -17,7 +28,10 @@ const icons = Object.fromEntries(
 const allIconNames = Object.keys(icons).sort();
 
 export default function App() {
-  const { clips, sections, tracks, loading } = useMusicData();
+  const { tracks, loading } = useMusicData();  // <- only rely on tracks here
+  const [clips, setClips] = useState({});
+  const [sections, setSections] = useState({});
+
   const [appIconName, setAppIconName] = useState(() => allIconNames[0] ?? "");
 
   const [status, setStatus] = useState("Idle");
@@ -54,7 +68,7 @@ export default function App() {
   }
   const engine = engineRef.current;
 
-  // Keep engine data in sync
+  // Keep engine data in sync (optional safety when clips/sections set)
   useEffect(() => {
     engine.setData({ clips, sections, tracks });
   }, [engine, clips, sections, tracks]);
@@ -152,7 +166,26 @@ export default function App() {
     setSelectedTrack(name);
     const savedVol = loadSavedTrackVolume(name);
     setTrackVolume(savedVol);
-    await engine.preloadTrack(name, { trackVolume: savedVol });
+
+    // Load per-track data
+    const basePath = tracks[name]?.basePath || `/tracks/${name}`;
+    const [clipRes, sectRes] = await Promise.all([
+      fetch(`${basePath}/clipData.json`),
+      fetch(`${basePath}/sectionData.json`)
+    ]);
+    const clipJson = await clipRes.json();
+    const sectJson = await sectRes.json();
+
+    // Normalize shapes if your JSONs are { clips: {...} } and { sections: {...} }
+    const nextClips    = clipJson?.clips    || clipJson || {};
+    const nextSections = sectJson?.sections || sectJson || {};
+
+    setClips(nextClips);
+    setSections(nextSections);
+
+    // Push into engine before preloading audio
+    engine.setData({ clips: nextClips, sections: nextSections, tracks }); // tracks optional
+    await engine.preloadTrack(name, { trackVolume: savedVol, basePath });
   };
 
   // Set user volume

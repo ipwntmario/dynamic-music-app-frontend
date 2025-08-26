@@ -1,0 +1,38 @@
+{
+  "sections": {
+    "BleepBloopRANDOM_intro": {
+      "defaultDisplayName": "Intro",
+      "firstClip": "BleepBloopRANDOM_intro",
+      "nextSection": "BleepBloopRANDOM_main",
+      "type": "auto"
+    },
+    "BleepBloopRANDOM_main": {
+      "defaultDisplayName": "Main",
+      "firstClip": "BleepBloopRANDOM_main_a",
+      "nextSection": [
+        "BleepBloopRANDOM_keychange",
+        "BleepBloopRANDOM_end"
+      ],
+      "type": ""
+    },
+    "BleepBloopRANDOM_keychange": {
+      "defaultDisplayName": "Keychange",
+      "firstClip": "BleepBloopRANDOM_keychange_a",
+      "nextSection": [
+        "BleepBloopRANDOM_main",
+        "BleepBloopRANDOM_endInKeychange"
+      ],
+      "type": ""
+    },
+    "BleepBloopRANDOM_end": {
+      "defaultDisplayName": "End",
+      "firstClip": "BleepBloopRANDOM_end",
+      "type": "end"
+    },
+    "BleepBloopRANDOM_endInKeychange": {
+      "defaultDisplayName": "End (in higher key)",
+      "firstClip": "BleepBloopRANDOM_endInKeychange",
+      "type": "end"
+    }
+  }
+}

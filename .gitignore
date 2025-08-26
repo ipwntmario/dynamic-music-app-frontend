@@ -23,11 +23,5 @@ dist-ssr
 *.sln
 *.sw?
 
-# Media directories
-# public/audio/*
-*.wav
-*.ogg.bak
-
-# Media configuration files
-# clipData.json
-# sectionData.json
+# WAV files
+public/tracks/_WAV

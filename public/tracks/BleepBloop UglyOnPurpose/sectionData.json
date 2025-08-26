@@ -1,0 +1,21 @@
+{
+  "sections": {
+    "BleepBloopTEST_intro": {
+      "defaultDisplayName": "Intro",
+      "firstClip": "BleepBloopTEST_intro",
+      "nextSection": "BleepBloopTEST_main",
+      "type": "auto"
+    },
+    "BleepBloopTEST_main": {
+      "defaultDisplayName": "Main",
+      "firstClip": "BleepBloopTEST_main_a",
+      "nextSection": "BleepBloopTEST_end",
+      "type": ""
+    },
+    "BleepBloopTEST_end": {
+      "defaultDisplayName": "End",
+      "firstClip": "BleepBloopTEST_end",
+      "type": "end"
+    }
+  }
+}

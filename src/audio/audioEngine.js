@@ -25,6 +25,7 @@ export class AudioEngine {
     this.clipData = {};
     this.sectionData = {};
     this.trackData = {};
+    this.trackBase = ""; // e.g. "/tracks/BleepBloop"
 
     this.userGain = null;   // per-user, local
     this.trackGain = null;  // per-track, shared
@@ -124,22 +125,28 @@ export class AudioEngine {
     this.stopTrack(false);
     this.lastTrackName = trackName;
 
+    // accept a per-track base path (folder for this track)
+    if (opts.basePath) this.trackBase = String(opts.basePath);
+
     // apply provided per-track volume if present
     const { trackVolume } = opts || {};
     if (typeof trackVolume === "number") {
       this.setTrackVolume(trackVolume);
     }
 
-    const track = this.trackData[trackName];
-    if (!track || !track.allClips) return;
+    // Preload every clip known in clipData for this selected track
+    const clipNames = Object.keys(this.clipData || {});
+    if (!clipNames.length) { this.onStatus(`No clips found for '${trackName}'`); return; }
 
     this.activeClips = {};
 
-    for (const clipName of track.allClips) {
+    for (const clipName of clipNames) {
       const clip = this.clipData[clipName];
       if (!clip) continue;
 
-      const res = await fetch(`/audio/${clip.file}`);
+      // Load from the track-specific folder
+      const url = `${this.trackBase}/audio/${clip.file}`;
+      const res = await fetch(url);
       const arr = await res.arrayBuffer();
       const buffer = await ctx.decodeAudioData(arr);
 
