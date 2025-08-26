@@ -40,7 +40,7 @@ export default function Transport({
           onClick={onStop}
           style={{
             ...baseBtn,
-            background: "tomato",
+            background: "#400000",
             color: "white",
             cursor: "pointer",
             fontSize: 16,

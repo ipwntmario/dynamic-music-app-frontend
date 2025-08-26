@@ -19,9 +19,10 @@ export class AudioEngine {
     this.queuedNextSectionName = null;
 
     this.activeClips = {};
-    this.lastPlayingClipName = null;
-
     this.scheduledTimeouts = [];
+    this.lastPlayingClipName = null;
+    this._isPreloaded = false;
+
     this.clipData = {};
     this.sectionData = {};
     this.trackData = {};
@@ -30,7 +31,6 @@ export class AudioEngine {
     this.userGain = null;   // per-user, local
     this.trackGain = null;  // per-track, shared
     this.currentTrackVolume = 1; // 0..1 (for UI syncing, optional)
-
   }
 
   setData({ clips, sections, tracks }) {
@@ -50,6 +50,16 @@ export class AudioEngine {
     const ctx = this.ensureContext();
     const v = Math.max(0, Math.min(1, Number(vol01) || 0));
     this.userGain?.gain.setValueAtTime(v, ctx.currentTime);
+  }
+
+  get isPreloaded() { return !!this._isPreloaded; }
+
+  _clearActiveClipsSilently() {
+    Object.values(this.activeClips).forEach(({ source }) => {
+      try { source.stop(); } catch {}
+    });
+    this.activeClips = {};
+    this._isPreloaded = false;
   }
 
   ensureContext() {
@@ -98,31 +108,56 @@ export class AudioEngine {
 
   stopTrack(withFade = true) {
     if (!this.audioCtx) return;
+
+    // Cancel any queued transitions
     this.clearScheduled();
 
-    // ensure progress bar can reset to 0 in the UI
-    this.lastPlayingClipName = null;
+    const fade = Math.max(0, Number(this.fadeOutSeconds ?? 0));
+    const now = this.audioCtx?.currentTime ?? 0;
 
-    Object.values(this.activeClips).forEach(({ source, gainNode }) => {
-      const fade = this.fadeOutSeconds; // your configurable fade
-      if (withFade && fade > 0) {
-        const now = this.audioCtx.currentTime;
-        gainNode.gain.cancelScheduledValues(now);
-        gainNode.gain.setValueAtTime(gainNode.gain.value, now);
-        gainNode.gain.linearRampToValueAtTime(0, now + fade);
-        setTimeout(() => { try { source.stop(); } catch {} }, fade * 1000 + 50);
-      } else {
+    const finish = () => {
+      // Stop sources and wipe state
+      Object.values(this.activeClips).forEach(({ source }) => {
         try { source.stop(); } catch {}
-      }
-    });
+      });
+      this.activeClips = {};
+      this.lastPlayingClipName = null;
+      // mark not preloaded so the app knows it must reload buffers
+      this._isPreloaded = false;
+      this.onStatus?.("Stopped");
+    };
 
-    this.activeClips = {};
-    this.onStatus("Stopped");
+    if (withFade && fade > 0) {
+      // ramp down but keep refs intact until we’re done
+      Object.values(this.activeClips).forEach(({ gainNode }) => {
+        try {
+          gainNode.gain.cancelScheduledValues(now);
+          gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+          gainNode.gain.linearRampToValueAtTime(0, now + fade);
+        } catch {}
+      });
+
+      // after fade finishes, stop + clear + announce "Stopped"
+      const id = setTimeout(finish, fade * 1000 + 60);
+      this.scheduledTimeouts.push(id);
+    } else {
+      // instant stop
+      Object.values(this.activeClips).forEach(({ source, gainNode }) => {
+        try {
+          gainNode.gain.cancelScheduledValues(now);
+          gainNode.gain.setValueAtTime(0, now);
+        } catch {}
+        try { source.stop(); } catch {}
+      });
+      this.activeClips = {};
+      this.lastPlayingClipName = null;
+      this._isPreloaded = false;
+      this.onStatus?.("Stopped");
+    }
   }
 
   async preloadTrack(trackName, opts = {}) {
     const ctx = this.ensureContext();
-    this.stopTrack(false);
     this.lastTrackName = trackName;
 
     // accept a per-track base path (folder for this track)
@@ -130,8 +165,18 @@ export class AudioEngine {
 
     // apply provided per-track volume if present
     const { trackVolume } = opts || {};
-    if (typeof trackVolume === "number") {
-      this.setTrackVolume(trackVolume);
+    if (typeof trackVolume === "number") this.setTrackVolume(trackVolume);
+
+    // If we’re NOT playing but have a previously preloaded set of sources,
+    // clear them quietly so we can preload the newly selected track.
+    if (!this.isPlaying && Object.keys(this.activeClips).length > 0) {
+      this._clearActiveClipsSilently();
+    }
+
+    // If we ARE playing, don’t allow preload; app defers until stop.
+    if (this.isPlaying) {
+      this.onStatus?.("Preload deferred: still playing");
+      return;
     }
 
     // Preload every clip known in clipData for this selected track
@@ -162,6 +207,7 @@ export class AudioEngine {
       this.activeClips[clipName] = { source, gainNode, buffer };
     }
 
+    this._isPreloaded = true;
     this.onStatus(`Track '${trackName}' preloaded`);
   }
 

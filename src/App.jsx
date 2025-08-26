@@ -3,10 +3,16 @@
  * A Dynamic Music Web Application
  *
  * Note: The majority of this code was written by ChatGPT (models 4o and 5), but the overall function and design was
- * handled by me, Dylan Travers. It may not be an example of raw coding knowledge, but it demontrates my ability to
- * concieve of a useful applciation, communicate goals, and work until those goals are achieved. My attention to detail
- * should be evident, as well as my careful consideration of what features to work on when so aspects of the project
- * could still be tested, as AI still has its flaws and oversights.
+ * handled by me, Dylan Travers. It is first and foremost a personal project created out of the desire for such a thing
+ * to exist, and to be used for an ongoing TTRPG group that I am a part of and write music for. I've searched high and
+ * low and couldn't find any form of dynamic music engine, or at least any that I could use my own music with. Thus, I
+ * figured, if it doesn't exist, I should make it exist.
+ *
+ * Because it's AI assisted, I don't claim for any code within this project to demonstrate my own raw coding abilities.
+ * However, if it is to be assessed in any way, I can make the claim that it demontrates my ability to concieve of a
+ * useful applciation, my ability to communicate goals, and work with others until those goals are achieved. My
+ * attention to detail should be evident, as well as my careful consideration of what features to work on when in order
+ * for adequate testing to be done.
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -36,6 +42,8 @@ export default function App() {
 
   const [status, setStatus] = useState("Idle");
   const [selectedTrack, setSelectedTrack] = useState(null);
+  const [playingTrackName, setPlayingTrackName] = useState(null);
+  const [isLoadingTrack, setIsLoadingTrack] = useState(false);
 
   // Section state used by the UI
   const [currentSectionName, setCurrentSectionName] = useState(null);
@@ -60,7 +68,14 @@ export default function App() {
   const engineRef = useRef(null);
   if (!engineRef.current) {
     engineRef.current = new AudioEngine({
-      onStatus: setStatus,
+      onStatus: (s) => {
+        setStatus(s);
+        if (s === "Stopped") {
+          setPlayDisabled(false);
+          setClipProgress(0);
+          setPlayingTrackName(null);  // force post-stop reload
+        }
+      },
       onSectionChange: (name) => setCurrentSectionName(name ?? null),
       onQueueChange: (nameOrNull) => setQueuedSectionName(nameOrNull),
       onReady: () => { setPlayDisabled(false); setClipProgress(0); },  // when engine finished resetting
@@ -124,12 +139,22 @@ export default function App() {
   const isComplexTrack = tracks[selectedTrack]?.simple === false;
 
   // Handlers
-  const handlePlay = () => {
-    // start wherever the current section pointer is (reset puts it at first section)
-    if (currentSectionName) {
-      engine.playSection(currentSectionName);
-    } else if (firstSection) {
-      engine.playSection(firstSection);
+  const handlePlay = async () => {
+    // If we’re idle or stopped and the selected track isn’t loaded, load it now
+    const needLoad =
+      !isPlaying &&
+      selectedTrack &&
+      (playingTrackName !== selectedTrack ||
+        !sections || !Object.keys(sections).length ||
+        !clips || !Object.keys(clips).length);
+
+    if (needLoad) {
+      await loadTrackAssets(selectedTrack); // serialized by isLoadingTrack
+    }
+
+    const target = currentSectionName || firstSection;
+    if (target) {
+      engine.playSection(target);
     }
   };
 
@@ -140,10 +165,9 @@ export default function App() {
   };
 
   const handleStop = async () => {
+    // Fade out current audio; do NOT reload any track here.
     setPlayDisabled(true);
-    await engine.stopAndReload();  // resolves after fade+reset
-    setPlayDisabled(false);
-    setClipProgress(0);            // <- snap progress bar to 0 after stop completes
+    engine.stopTrack?.(true); // "Stopped" will arrive after fade; onStatus will re-enable
   };
 
   const loadSavedTrackVolume = (name) => {
@@ -163,43 +187,76 @@ export default function App() {
   };
 
   const handleSelectTrack = async (name) => {
+    // Only update selection + volume now; actual loading is deferred until STOP.
     setSelectedTrack(name);
     const savedVol = loadSavedTrackVolume(name);
     setTrackVolume(savedVol);
-
-    // Load per-track data
-    const basePath = tracks[name]?.basePath || `/tracks/${name}`;
-    const [clipRes, sectRes] = await Promise.all([
-      fetch(`${basePath}/clipData.json`),
-      fetch(`${basePath}/sectionData.json`)
-    ]);
-    const clipJson = await clipRes.json();
-    const sectJson = await sectRes.json();
-
-    // Normalize shapes if your JSONs are { clips: {...} } and { sections: {...} }
-    const nextClips    = clipJson?.clips    || clipJson || {};
-    const nextSections = sectJson?.sections || sectJson || {};
-
-    setClips(nextClips);
-    setSections(nextSections);
-
-    // Push into engine before preloading audio
-    engine.setData({ clips: nextClips, sections: nextSections, tracks }); // tracks optional
-    await engine.preloadTrack(name, { trackVolume: savedVol, basePath });
+    // No preload here by design.
   };
+
+  // Helper: load assets for a given track (called when fully stopped)
+  const loadTrackAssets = async (name) => {
+    if (!name) return;
+    if (isPlaying) return;          // never load mid-play
+    if (isLoadingTrack) return;     // already loading
+
+    setIsLoadingTrack(true);
+    try {
+      const basePath = tracks[name]?.basePath || `/tracks/${name}`;
+      const [clipRes, sectRes] = await Promise.all([
+        fetch(`${basePath}/clipData.json`),
+        fetch(`${basePath}/sectionData.json`)
+      ]);
+      const clipJson = await clipRes.json();
+      const sectJson = await sectRes.json();
+      const nextClips    = clipJson?.clips    || clipJson || {};
+      const nextSections = sectJson?.sections || sectJson || {};
+
+      setClips(nextClips);
+      setSections(nextSections);
+      engine.setData({ clips: nextClips, sections: nextSections, tracks });
+
+      const savedVol = loadSavedTrackVolume(name);
+      await engine.preloadTrack(name, { trackVolume: savedVol, basePath });
+
+      setPlayingTrackName(name); // reflect what's actually loaded/ready
+      setClipProgress(0); // start progress at 0 for newly loaded track
+      } finally {
+        setIsLoadingTrack(false);
+      }
+  };
+
+  // When fully stopped (end of fade or true end), load whichever track is selected.
+  useEffect(() => {
+    if (!isPlaying && selectedTrack && (!playingTrackName || selectedTrack !== playingTrackName)) {
+      loadTrackAssets(selectedTrack);
+    }
+  }, [isPlaying, selectedTrack, playingTrackName]);  // will only run after a real STOP
 
   // Set user volume
   useEffect(() => {
     engine.setUserVolume?.(userMuted ? 0 : userVolume);
   }, [engine, userVolume, userMuted]);
 
-  // Set track volume
+  // Persist the selected track's slider changes (always)
   useEffect(() => {
     // whenever trackVolume changes for the selected track, apply + persist
     if (!selectedTrack) return;
-    engine.setTrackVolume?.(trackVolume);
     saveTrackVolume(selectedTrack, trackVolume);
-  }, [engine, selectedTrack, trackVolume]);
+  }, [selectedTrack, trackVolume]);
+
+  // Apply volume to the engine for the playing track only
+  useEffect(() => {
+    if (!playingTrackName) return;
+    // If the selected track is the one playing, use the slider value
+    if (selectedTrack === playingTrackName) {
+      engine.setTrackVolume?.(trackVolume);
+    } else {
+      // Otherwise, load the saved volume for the currently playing track
+      const v = loadSavedTrackVolume(playingTrackName);
+      engine.setTrackVolume?.(v);
+    }
+  }, [engine, playingTrackName, selectedTrack, trackVolume]);
 
   // Persist app icon
   useEffect(() => {
@@ -308,18 +365,30 @@ export default function App() {
               onStop={handleStop}
               playDisabled={playDisabled}
               controlSize={36}                                   // match 🔊 height
-              stopStyle={isComplexTrack ? { background: "#400000" } : undefined}
+              stopStyle={isComplexTrack ? { background: "#000000" } : undefined}
             />
           )}
         </div>
       </section>
 
+      {/* Now Playing (shows what's actually loaded/ready) */}
+      {playingTrackName && (
+        <div style={{ marginTop: -8, marginBottom: 12, display: "flex", alignItems: "baseline", gap: 8 }}>
+          <span style={{ color: "#aaa", fontSize: 16, fontWeight: 600 }}>Track:</span>
+          <span style={{ color: "#fff", fontSize: 20, fontWeight: 700 }}>
+            {tracks[playingTrackName]?.defaultDisplayName || playingTrackName}
+          </span>
+        </div>
+      )}
 
       {/* Section Controls */}
       {currentSectionName && (
         <section style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
-            {sections[currentSectionName]?.defaultDisplayName ?? currentSectionName}
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 8 }}>
+            <span style={{ color: "#aaa", fontSize: 14, fontWeight: 600 }}>Section:</span>
+            <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>
+              {sections[currentSectionName]?.defaultDisplayName ?? currentSectionName}
+            </span>
           </div>
           <SectionPanel
             sections={sections}
