@@ -158,6 +158,7 @@ export class AudioEngine {
 
   async preloadTrack(trackName, opts = {}) {
     const ctx = this.ensureContext();
+    this.currentTrackName = trackName;
     this.lastTrackName = trackName;
 
     // accept a per-track base path (folder for this track)

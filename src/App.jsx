@@ -136,7 +136,9 @@ export default function App() {
   const isPlaying = /^Playing/.test(status);
 
   // derive if not "simple" track
-  const isComplexTrack = tracks[selectedTrack]?.simple === false;
+  const isDynamicTrack = tracks[selectedTrack]?.simple === false;
+  const isDynamicPlayingTrack = playingTrackName && tracks[playingTrackName]?.simple === false;
+
 
   // Handlers
   const handlePlay = async () => {
@@ -270,7 +272,10 @@ export default function App() {
   }, [appIconName]);
 
   return (
-    <div style={{ fontFamily: "sans-serif", padding: 20 }}>
+    <div style={{
+      fontFamily: "sans-serif",
+      padding: 20
+      }}>
 
       {/* Settings Icon */}
       <div style={{ position: "absolute", top: 16, right: 16 }}>
@@ -365,7 +370,7 @@ export default function App() {
               onStop={handleStop}
               playDisabled={playDisabled}
               controlSize={36}                                   // match 🔊 height
-              stopStyle={isComplexTrack ? { background: "#000000" } : undefined}
+              stopStyle={isDynamicPlayingTrack ? { background: "transparent" } : undefined}
             />
           )}
         </div>
@@ -384,12 +389,15 @@ export default function App() {
       {/* Section Controls */}
       {currentSectionName && (
         <section style={{ marginBottom: 16 }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 8 }}>
-            <span style={{ color: "#aaa", fontSize: 14, fontWeight: 600 }}>Section:</span>
-            <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>
-              {sections[currentSectionName]?.defaultDisplayName ?? currentSectionName}
-            </span>
-          </div>
+          {!isDynamicTrack && null}
+          {isDynamicPlayingTrack && (
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 8 }}>
+              <span style={{ color: "#aaa", fontSize: 14, fontWeight: 600 }}>Section:</span>
+              <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>
+                {sections[currentSectionName]?.defaultDisplayName ?? currentSectionName}
+              </span>
+            </div>
+          )}
           <SectionPanel
             sections={sections}
             currentSectionName={currentSectionName}
@@ -408,7 +416,7 @@ export default function App() {
       {/* Clip Information (progress bar from 0 to loopPoint) */}
       <section style={{ marginBottom: 16 }}>
         <div style={{ height: 10, background: "#444", borderRadius: 6, overflow: "hidden" }} aria-label="Clip position">
-          <div style={{ width: `${Math.round(clipProgress * 100)}%`, height: "100%", background: "#0aa", transition: "width 80ms linear" }} />
+          <div style={{ width: `${Math.round(clipProgress * 100)}%`, height: "100%", background: "#dac189", transition: "width 80ms linear" }} />
         </div>
       </section>
 

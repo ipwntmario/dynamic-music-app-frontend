@@ -21,15 +21,18 @@ export default function SectionPanel({
         const isEnd = targetSection?.type === "end";
 
         // Base styles
-        let background = "black";
+        let background = "#0b4a74";
         let color = "white";
         let border = "1px solid #555";
         let opacity = 1;
 
-        if (isEnd) background = "#400000";                                        // red for end sections
-        if (isQueued && !isAutoLocked) background = "#0aa";                    // green when queued
+        if (isEnd) background = "#ad2f49";                                        // red for end sections
+        if (isQueued && !isAutoLocked) {
+          background = "#ffe2a0";                    // green when queued
+          color = "black";
+        }
         if (isAutoLocked && !isQueued) { background = "#696969"; opacity = 0.9; } // disabled-grey
-        if (isAutoLocked && isQueued) { background = "#4e694e"; opacity = 0.9; }  // disabled and queued grey-green
+        if (isAutoLocked && isQueued) { background = "#988d61"; opacity = 0.9; }  // disabled and queued grey-green
 
         const sizeStyle = largeButtons
           ? { padding: "10px 20px", fontSize: 16 }

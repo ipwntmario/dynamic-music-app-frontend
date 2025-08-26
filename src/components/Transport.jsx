@@ -24,7 +24,7 @@ export default function Transport({
           disabled={playDisabled}
           style={{
             ...baseBtn,
-            background: "#0aa",       // same as progress bar color
+            background: "#18a3ff",       // same as progress bar color
             color: "black",
             cursor: playDisabled ? "not-allowed" : "pointer",
             opacity: playDisabled ? 0.7 : 1,
@@ -40,7 +40,7 @@ export default function Transport({
           onClick={onStop}
           style={{
             ...baseBtn,
-            background: "#400000",
+            background: "#ad2f49",
             color: "white",
             cursor: "pointer",
             fontSize: 16,
