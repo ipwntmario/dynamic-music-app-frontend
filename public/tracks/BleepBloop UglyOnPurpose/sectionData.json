@@ -1,20 +1,20 @@
 {
   "sections": {
-    "BleepBloopTEST_intro": {
+    "Intro": {
       "defaultDisplayName": "Intro",
-      "firstClip": "BleepBloopTEST_intro",
-      "nextSection": "BleepBloopTEST_main",
+      "firstClip": "Intro",
+      "nextSection": "Main",
       "type": "auto"
     },
     "BleepBloopTEST_main": {
       "defaultDisplayName": "Main",
-      "firstClip": "BleepBloopTEST_main_a",
-      "nextSection": "BleepBloopTEST_end",
+      "firstClip": "Main_a",
+      "nextSection": "End",
       "type": ""
     },
     "BleepBloopTEST_end": {
       "defaultDisplayName": "End",
-      "firstClip": "BleepBloopTEST_end",
+      "firstClip": "End",
       "type": "end"
     }
   }

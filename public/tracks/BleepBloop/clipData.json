@@ -1,85 +1,85 @@
 {
   "clips": {
-    "BleepBloop_intro": {
-      "file": "BleepBloop_intro.ogg",
+    "Intro": {
+      "file": "Intro.ogg",
       "loopPoint": 4.615397,
       "clipEnd": 11.538481,
       "nextClip": [
-        "BleepBloop_intro"
+        "Intro"
       ]
     },
-    "BleepBloop_main_a": {
-      "file": "BleepBloop_main_a.ogg",
+    "Main_a": {
+      "file": "Main_a.ogg",
       "loopPoint": 9.230771,
       "clipEnd": 16.153855,
       "nextClip": [
-        "BleepBloop_main_b"
+        "Main_b"
       ]
     },
-    "BleepBloop_main_b": {
-      "file": "BleepBloop_main_b.ogg",
+    "Main_b": {
+      "file": "Main_b.ogg",
       "loopPoint": 9.230771,
       "clipEnd": 16.153855,
       "nextClip": [
-        "BleepBloop_main_c"
+        "Main_c"
       ]
     },
-    "BleepBloop_main_c": {
-      "file": "BleepBloop_main_c.ogg",
+    "Main_c": {
+      "file": "Main_c.ogg",
       "loopPoint": 9.230771,
       "clipEnd": 16.153855,
       "nextClip": [
-        "BleepBloop_main_d"
+        "Main_d"
       ]
     },
-    "BleepBloop_main_d": {
-      "file": "BleepBloop_main_d.ogg",
+    "Main_d": {
+      "file": "Main_d.ogg",
       "loopPoint": 9.230771,
       "clipEnd": 16.153855,
       "nextClip": [
-        "BleepBloop_main_a"
+        "Main_a"
       ]
     },
-    "BleepBloop_keychange_a": {
-      "file": "BleepBloop_keychange_a.ogg",
+    "Keychange_a": {
+      "file": "Keychange_a.ogg",
       "loopPoint": 9.230771,
       "clipEnd": 13.846168,
       "nextClip": [
-        "BleepBloop_keychange_b"
+        "Keychange_b"
       ]
     },
-    "BleepBloop_keychange_b": {
-      "file": "BleepBloop_keychange_b.ogg",
+    "Keychange_b": {
+      "file": "Keychange_b.ogg",
       "loopPoint": 9.230771,
       "clipEnd": 13.846168,
       "nextClip": [
-        "BleepBloop_keychange_c"
+        "Keychange_c"
       ]
     },
-    "BleepBloop_keychange_c": {
-      "file": "BleepBloop_keychange_c.ogg",
+    "Keychange_c": {
+      "file": "Keychange_c.ogg",
       "loopPoint": 9.230771,
       "clipEnd": 13.846168,
       "nextClip": [
-        "BleepBloop_keychange_d"
+        "Keychange_d"
       ]
     },
-    "BleepBloop_keychange_d": {
-      "file": "BleepBloop_keychange_d.ogg",
+    "Keychange_d": {
+      "file": "Keychange_d.ogg",
       "loopPoint": 9.230771,
       "clipEnd": 13.846168,
       "nextClip": [
-        "BleepBloop_keychange_a"
+        "Keychange_a"
       ]
     },
-    "BleepBloop_end": {
-      "file": "BleepBloop_end.ogg",
+    "End": {
+      "file": "End.ogg",
       "loopPoint": 16.153855,
       "clipEnd": 16.153855,
       "nextClip": []
     },
-    "BleepBloop_endInKeychange": {
-      "file": "BleepBloop_endInKeychange.ogg",
+    "EndInKeychange": {
+      "file": "EndInKeychange.ogg",
       "loopPoint": 13.846168,
       "clipEnd": 13.846168,
       "nextClip": []
