@@ -1,7 +1,9 @@
 {
   "clips": {
     "IntroTEST": {
-      "file": "IntroTEST.ogg",
+      "file": {
+        "base": "IntroTEST.ogg"
+      },
       "loopPoint": 4.615397,
       "clipEnd": 11.538481,
       "nextClip": [
@@ -9,7 +11,9 @@
       ]
     },
     "Main_aTEST": {
-      "file": "Main_aTEST.ogg",
+      "file": {
+        "base": "Main_aTEST.ogg"
+      },
       "loopPoint": 9.230771,
       "clipEnd": 16.153855,
       "nextClip": [
@@ -17,7 +21,9 @@
       ]
     },
     "Main_b": {
-      "file": "Main_b.ogg",
+      "file": {
+        "base": "Main_b.ogg"
+      },
       "loopPoint": 9.230771,
       "clipEnd": 16.153855,
       "nextClip": [
@@ -25,7 +31,9 @@
       ]
     },
     "Main_c": {
-      "file": "Main_c.ogg",
+      "file": {
+        "base": "Main_c.ogg"
+      },
       "loopPoint": 9.230771,
       "clipEnd": 16.153855,
       "nextClip": [
@@ -33,7 +41,9 @@
       ]
     },
     "Main_d": {
-      "file": "Main_d.ogg",
+      "file": {
+        "base": "Main_d.ogg"
+      },
       "loopPoint": 9.230771,
       "clipEnd": 16.153855,
       "nextClip": [
@@ -41,7 +51,9 @@
       ]
     },
     "End": {
-      "file": "End.ogg",
+      "file": {
+        "base": "End.ogg"
+      },
       "loopPoint": 16.153855,
       "clipEnd": 16.153855,
       "nextClip": []

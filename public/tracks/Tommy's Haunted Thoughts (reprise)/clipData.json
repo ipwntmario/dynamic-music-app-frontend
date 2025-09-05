@@ -1,7 +1,9 @@
 {
   "clips": {
     "Tommy's Haunted Thoughts (reprise)": {
-      "file": "Tommy's Haunted Thoughts (reprise).ogg",
+      "file": {
+        "base": "Tommy's Haunted Thoughts (reprise).ogg"
+      },
       "loopPoint": 120,
       "clipEnd": 120,
       "nextClip": [

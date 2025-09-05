@@ -1,7 +1,9 @@
 {
   "clips": {
     "Lena's Home": {
-      "file": "Lena's Home.ogg",
+      "file": {
+        "base": "Lena's Home.ogg"
+      },
       "loopPoint": 180,
       "clipEnd": 180,
       "nextClip": []

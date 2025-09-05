@@ -1,7 +1,9 @@
 {
   "clips": {
     "Lena's Sight": {
-      "file": "Lena's Sight.ogg",
+      "file": {
+        "base": "Lena's Sight.ogg"
+      },
       "loopPoint": 192,
       "clipEnd": 192,
       "nextClip": [

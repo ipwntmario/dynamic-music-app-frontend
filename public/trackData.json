@@ -7,6 +7,13 @@
       "simple": false,
       "test": true
     },
+    "BleepBloop Modes": {
+      "defaultDisplayName": "BleepBloop with Modes",
+      "basePath": "/tracks/BleepBloop Modes",
+      "firstSection": "Intro",
+      "simple": false,
+      "test": true
+    },
     "BleepBloop Randomized": {
       "defaultDisplayName": "BleepBloop Randomized (TEST TRACK)",
       "basePath": "/tracks/BleepBloop Randomized",
